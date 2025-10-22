@@ -18,7 +18,7 @@ source "$HOME/.cargo/env"
 uv run maturin develop --release --manifest-path rustbpe/Cargo.toml
 
 # 下载数据集
-python -m nanochat.dataset -n 5
+python3 -m nanochat.dataset -n 5
 
 # 下载 eval bundle
 EVAL_BUNDLE_URL=https://karpathy-public.s3.us-west-2.amazonaws.com/eval_bundle.zip
