@@ -24,9 +24,9 @@ if [ -z "$WANDB_RUN" ]; then
 fi
 
 source .venv/bin/activate
-python3 -m nanochat.report reset
+python -m nanochat.report reset
 
 torchrun --standalone --nproc_per_node=1 -m scripts.base_train -- --depth=1 --device_batch_size=1 --num_iterations=3 --run=$WANDB_RUN
 
-python3 -m nanochat.report generate
+python -m nanochat.report generate
 echo "Training Done!"
