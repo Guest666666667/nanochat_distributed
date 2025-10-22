@@ -7,7 +7,7 @@
 #SBATCH --gpus=2
 #SBATCH --gpus-per-node=2
 #SBATCH --ntasks-per-node=2
-#SBATCH --cpus-per-task=10sinfo
+#SBATCH --cpus-per-task=16
 #SBATCH --output=logs/nanochat-%N-%j.out
 #SBATCH --mem=0
 #SBATCH --nodelist=node5    ###node5,node6
@@ -27,8 +27,13 @@ echo "MASTER="${MASTER_ADDR}":"${MASTER_PORT}
 echo "SLURM_NNODES="${SLURM_NNODES}
 echo "SLURM_NTASKS="${SLURM_NTASKS}
 
-if [ ! -f "$NANOCHAT_BASE_DIR/tok_checkpoints/tok.model" ]; then
+if [ ! -f "$NANOCHAT_BASE_DIR/tokenizer/tokenizer.pkl" ]; then
     echo "ERROR: Tokenizer not found. Run train_and_distribute_tokenizer.sh first."
+    exit 1
+fi
+
+if [ ! -f "$NANOCHAT_BASE_DIR/tokenizer/token_bytes.pt" ]; then
+    echo "ERROR: Token bytes mapping not found. Run train_and_distribute_tokenizer.sh first."
     exit 1
 fi
 
