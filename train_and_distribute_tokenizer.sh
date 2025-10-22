@@ -32,7 +32,7 @@ echo ""
 echo "=========================================="
 echo "Step 1: Training tokenizer..."
 echo "=========================================="
-python -m scripts.tok_train --max_chars=2000000000
+python3 -m scripts.tok_train --max_chars=5000000
 
 if [ $? -ne 0 ]; then
     echo "ERROR: Tokenizer training failed"
@@ -44,18 +44,17 @@ echo ""
 echo "=========================================="
 echo "Step 2: Evaluating tokenizer..."
 echo "=========================================="
-python -m scripts.tok_eval
+python3 -m scripts.tok_eval
 
 echo ""
 echo "Tokenizer training completed on $(hostname)"
-echo "Tokenizer saved to: $NANOCHAT_BASE_DIR/tok_checkpoints/"
 
 # 分发到其他节点
 echo ""
 echo "=========================================="
 echo "Step 3: Distributing tokenizer to other nodes..."
 echo "=========================================="
-TARGET_NODES="node6"  #node2 node3 node4
+TARGET_NODES=""  #node2 node3 node4
 echo "Distributing to: $TARGET_NODES"
 for node in $TARGET_NODES; do
     echo "Copying to $node..."

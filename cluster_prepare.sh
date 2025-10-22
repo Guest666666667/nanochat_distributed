@@ -9,12 +9,16 @@ uv sync
 source .venv/bin/activate
 
 # Rust
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+if command -v rustc >/dev/null 2>&1; then
+    echo "Skip install rustup"
+else
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | bash -s -- -y
+fi
 source "$HOME/.cargo/env"
 uv run maturin develop --release --manifest-path rustbpe/Cargo.toml
 
 # 下载数据集
-python -m nanochat.dataset -n 240
+python -m nanochat.dataset -n 5
 
 # 下载 eval bundle
 EVAL_BUNDLE_URL=https://karpathy-public.s3.us-west-2.amazonaws.com/eval_bundle.zip

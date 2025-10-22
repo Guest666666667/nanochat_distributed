@@ -3,14 +3,14 @@
 #SBATCH --time=12:00:00
 
 ### e.g. request 2 nodes with 1 gpu each, totally 2 gpus (WORLD_SIZE==2)
-#SBATCH --nodes=2
-#SBATCH --gpus=4
+#SBATCH --nodes=1
+#SBATCH --gpus=2
 #SBATCH --gpus-per-node=2
 #SBATCH --ntasks-per-node=2
-#SBATCH --cpus-per-task=16
+#SBATCH --cpus-per-task=10sinfo
 #SBATCH --output=logs/nanochat-%N-%j.out
 #SBATCH --mem=0
-#SBATCH --nodelist=node5,node6
+#SBATCH --nodelist=node5    ###node5,node6
 
 # slurm
 export MASTER_ADDR=$(scontrol show hostnames "$SLURM_JOB_NODELIST" | head -n 1)
@@ -39,13 +39,14 @@ fi
 
 if [ -z "$WANDB_RUN" ]; then
     WANDB_RUN=dummy
-fi
+ficla
 source .venv/bin/activate
-python -m nanochat.report reset
+python3 -m nanochat.report reset
 
 # -----------------------------------------------------------------------------
 # Base model pretraining (使用srun启动分布式训练)
-srun python -m scripts.base_train -- --depth=20 --run=$WANDB_RUN
+srun python -m scripts.base_train -- --depth=1 --device_batch_size=1 --num_iterations=3 --run=$WANDB_RUN
 
 # 生成报告 (只在主节点执行)
-python -m nanochat.report generate
+python3 -m nanochat.report generate
+echo "Training Done!"
