@@ -26,7 +26,7 @@ fi
 source .venv/bin/activate
 python -m nanochat.report reset
 
-torchrun --standalone --nproc_per_node=1 -m scripts.base_train -- --depth=1 --device_batch_size=1 --num_iterations=3 --run=$WANDB_RUN
+torchrun --standalone --nproc_per_node=2 -m scripts.base_train -- --depth=1 --device_batch_size=1 --num_iterations=3 --run=$WANDB_RUN
 
 python -m nanochat.report generate
 echo "Training Done!"

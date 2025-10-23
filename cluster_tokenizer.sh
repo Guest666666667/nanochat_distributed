@@ -1,6 +1,6 @@
 #!/bin/bash
 # 手动在主节点执行的 tokenizer 训练和分发脚本
-# 使用方法: bash train_and_distribute_tokenizer.sh
+# 使用方法: bash cluster_tokenizer.sh
 
 set -e  # 遇到错误立即退出
 
@@ -54,11 +54,11 @@ echo ""
 echo "=========================================="
 echo "Step 3: Distributing tokenizer to other nodes..."
 echo "=========================================="
-TARGET_NODES=""  #node2 node3 node4
+TARGET_NODES="node5"
 echo "Distributing to: $TARGET_NODES"
 for node in $TARGET_NODES; do
     echo "Copying to $node..."
-    scp -r $NANOCHAT_BASE_DIR/tok_checkpoints/ $node:$NANOCHAT_BASE_DIR/
+    scp -r $NANOCHAT_BASE_DIR/tokenizer/ $node:$NANOCHAT_BASE_DIR/
 done
 
 echo ""

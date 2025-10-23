@@ -10,7 +10,7 @@
 #SBATCH --cpus-per-task=16
 #SBATCH --output=logs/nanochat-%N-%j.out
 #SBATCH --mem=0
-#SBATCH --nodelist=node5    ###node5,node6
+#SBATCH --nodelist=node4
 
 # slurm
 export MASTER_ADDR=$(scontrol show hostnames "$SLURM_JOB_NODELIST" | head -n 1)
@@ -51,7 +51,6 @@ python3 -m nanochat.report reset
 
 # -----------------------------------------------------------------------------
 # Base model pretraining (使用srun启动分布式训练)
-#srun python -m scripts.base_train -- --depth=1 --device_batch_size=1 --num_iterations=3 --run=$WANDB_RUN
 srun torchrun --standalone --nproc_per_node=2 -m scripts.base_train -- --depth=1 --device_batch_size=1 --num_iterations=3 --run=$WANDB_RUN
 
 
