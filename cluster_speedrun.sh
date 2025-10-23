@@ -6,7 +6,7 @@
 #SBATCH --nodes=1
 #SBATCH --gpus=2
 #SBATCH --gpus-per-node=2
-#SBATCH --ntasks-per-node=2
+#SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=16
 #SBATCH --output=logs/nanochat-%N-%j.out
 #SBATCH --mem=0
@@ -44,13 +44,16 @@ fi
 
 if [ -z "$WANDB_RUN" ]; then
     WANDB_RUN=dummy
-ficla
+fi
+
 source .venv/bin/activate
 python3 -m nanochat.report reset
 
 # -----------------------------------------------------------------------------
 # Base model pretraining (使用srun启动分布式训练)
-srun python -m scripts.base_train -- --depth=1 --device_batch_size=1 --num_iterations=3 --run=$WANDB_RUN
+#srun python -m scripts.base_train -- --depth=1 --device_batch_size=1 --num_iterations=3 --run=$WANDB_RUN
+srun torchrun --standalone --nproc_per_node=2 -m scripts.base_train -- --depth=1 --device_batch_size=1 --num_iterations=3 --run=$WANDB_RUN
+
 
 # 生成报告 (只在主节点执行)
 python3 -m nanochat.report generate
