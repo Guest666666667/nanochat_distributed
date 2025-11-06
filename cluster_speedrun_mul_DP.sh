@@ -1,8 +1,6 @@
 #!/bin/bash
-#SBATCH --job-name=nanochat_speedrun
+#SBATCH --job-name=nanochat_deepspeed
 #SBATCH --time=12:00:00
-
-### e.g. request 2 nodes with 1 gpu each, totally 2 gpus (WORLD_SIZE==2)
 #SBATCH --nodes=2
 #SBATCH --gpus=4
 #SBATCH --gpus-per-node=2
@@ -12,21 +10,17 @@
 #SBATCH --mem=0
 #SBATCH --nodelist=node4,node5
 
-# slurm
-export MASTER_ADDR=$(scontrol show hostnames "$SLURM_JOB_NODELIST" | head -n 1)
-export MASTER_PORT=29500
-
-# nanochat
+# 环境变量设置
 export OMP_NUM_THREADS=1
 export NANOCHAT_BASE_DIR="$HOME/.cache/nanochat"
 mkdir -p $NANOCHAT_BASE_DIR
 
 echo "Host="$(hostname)
 echo "NODELIST="${SLURM_NODELIST}
-echo "MASTER="${MASTER_ADDR}":"${MASTER_PORT}
 echo "SLURM_NNODES="${SLURM_NNODES}
 echo "SLURM_NTASKS="${SLURM_NTASKS}
 
+# 检查必要文件
 if [ ! -f "$NANOCHAT_BASE_DIR/tokenizer/tokenizer.pkl" ]; then
     echo "ERROR: Tokenizer not found. Run train_and_distribute_tokenizer.sh first."
     exit 1
@@ -49,11 +43,17 @@ fi
 source .venv/bin/activate
 python3 -m nanochat.report reset
 
-NPROC_PER_NODE=2
-# -----------------------------------------------------------------------------
-# Base model pretraining (使用srun启动分布式训练)
-srun torchrun --nnodes=2 --nproc_per_node=$NPROC_PER_NODE --rdzv_backend=c10d --rdzv_endpoint=$MASTER_ADDR:$MASTER_PORT -m scripts.base_train -- --depth=1 --device_batch_size=1 --num_iterations=3 --run=$WANDB_RUN
+deepspeed --launcher=slurm \
+    --num_nodes=2 \
+    --num_gpus=2 \
+    scripts/base_train_DP.py \
+    --deepspeed \
+    --deepspeed_config ds_config.json \
+    --depth=1 \
+    --device_batch_size=1 \
+    --num_iterations=3 \
+    --run=$WANDB_RUN
 
-# 生成报告 (只在主节点执行)
-python3 -m nanochat.report generatex
+# 生成报告
+python3 -m nanochat.report generate
 echo "Training Done!"

@@ -17,6 +17,14 @@ fi
 source "$HOME/.cargo/env"
 uv run maturin develop --release --manifest-path rustbpe/Cargo.toml
 
+# DeepSpeed
+if ! python -c "import deepspeed" 2>/dev/null; then
+    echo "DeepSpeed not found, installing..."
+    pip install deepspeed
+fi
+echo "Checking DeepSpeed installation..."
+ds_report
+
 # 下载数据集
 python -m nanochat.dataset -n 5
 
