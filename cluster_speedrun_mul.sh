@@ -49,9 +49,10 @@ fi
 source .venv/bin/activate
 python3 -m nanochat.report reset
 
+NPROC_PER_NODE=2
 # -----------------------------------------------------------------------------
 # Base model pretraining (使用srun启动分布式训练)
-srun torchrun --nnodes=2 --nproc_per_node=2 --rdzv_backend=c10d --rdzv_endpoint=$MASTER_ADDR:$MASTER_PORT -m scripts.base_train -- --depth=1 --device_batch_size=1 --num_iterations=3 --run=$WANDB_RUN
+srun torchrun --nnodes=2 --nproc_per_node=$NPROC_PER_NODE --rdzv_backend=c10d --rdzv_endpoint=$MASTER_ADDR:$MASTER_PORT -m scripts.base_train -- --depth=1 --device_batch_size=1 --num_iterations=3 --run=$WANDB_RUN
 
 # 生成报告 (只在主节点执行)
 python3 -m nanochat.report generate
