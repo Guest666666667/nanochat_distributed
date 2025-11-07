@@ -2,9 +2,8 @@
 #SBATCH --job-name=nanochat_deepspeed
 #SBATCH --time=12:00:00
 #SBATCH --nodes=2
-#SBATCH --gpus=4
-#SBATCH --gpus-per-node=2
-#SBATCH --ntasks=1
+#SBATCH --gres=gpu:2
+#SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=16
 #SBATCH --output=logs/nanochat-%N-%j.out
 #SBATCH --mem=0
