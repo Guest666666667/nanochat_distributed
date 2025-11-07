@@ -51,19 +51,11 @@ done
 echo "Generated hostfile:"
 cat $HOSTFILE
 
-# 创建wrapper脚本
-cat > /tmp/deepspeed_python_wrapper.sh << 'EOF'
-#!/bin/bash
-source /home/user/Desktop/nanochat_distributed/.venv/bin/activate
-exec python3 "$@"
-EOF
-chmod +x /tmp/deepspeed_python_wrapper.sh
 
 deepspeed --launcher=slurm \
     --hostfile $HOSTFILE \
     --no_ssh_check \
     scripts/base_train_DP.py \
-    /tmp/deepspeed_python_wrapper.sh \
     --deepspeed \
     --deepspeed_config ds_config.json \
     --depth=1 \
