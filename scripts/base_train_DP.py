@@ -36,6 +36,7 @@ from scripts.base_eval import evaluate_model
 print_banner()
 
 # -----------------------------------------------------------------------------
+deepspeed_config = "ds_config.json"
 # User settings
 run = "dummy" # wandb run name default ("dummy" is special - we won't log to wandb)
 # Runtime
@@ -67,6 +68,7 @@ sample_every = 2000 # every how many steps to sample from the model
 # Output
 model_tag = "" # optionally override the model tag for the output checkpoint directory name
 # now allow CLI to override the settings via the configurator lol
+print(globals().items())
 config_keys = [k for k,v in globals().items() if not k.startswith('_') and isinstance(v, (int, float, bool, str))]
 exec(open(os.path.join('nanochat', 'configurator.py')).read()) # overrides from command line or config file
 user_config = {k: globals()[k] for k in config_keys} # will be useful for logging
