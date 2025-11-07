@@ -56,8 +56,7 @@ deepspeed --launcher=slurm \
     --hostfile $HOSTFILE \
     --no_ssh_check \
     scripts/base_train_DP.py \
-    --deepspeed \
-    --deepspeed_config ds_config.json \
+    --deepspeed_config=ds_config.json \
     --depth=1 \
     --device_batch_size=1 \
     --num_iterations=3 \
