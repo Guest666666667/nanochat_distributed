@@ -2,9 +2,8 @@
 #SBATCH --job-name=nanochat_deepspeed
 #SBATCH --time=12:00:00
 #SBATCH --nodes=2
-#SBATCH --gpus=4
 #SBATCH --gpus-per-node=2
-#SBATCH --ntasks-per-node=1
+#SBATCH --ntasks=1
 #SBATCH --cpus-per-task=16
 #SBATCH --output=logs/nanochat-%N-%j.out
 #SBATCH --mem=0
@@ -60,8 +59,6 @@ cat $HOSTFILE
 
 deepspeed --launcher=slurm \
     --hostfile $HOSTFILE \
-    --num_nodes=2 \
-    --num_gpus=2 \
     --no_ssh_check \
     scripts/base_train_DP.py \
     --deepspeed_config=ds_config.json \
