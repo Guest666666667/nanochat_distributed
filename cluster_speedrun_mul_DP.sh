@@ -4,7 +4,7 @@
 #SBATCH --nodes=2
 #SBATCH --gpus=4
 #SBATCH --gpus-per-node=2
-#SBATCH --ntasks-per-node=1
+#SBATCH --ntasks-per-node=2
 #SBATCH --cpus-per-task=16
 #SBATCH --output=logs/nanochat-%N-%j.out
 #SBATCH --mem=0
@@ -51,21 +51,19 @@ done
 echo "Generated hostfile:"
 cat $HOSTFILE
 
-# 获取master节点hostname
-MASTER_NODE=$(scontrol show hostnames "$SLURM_JOB_NODELIST" | head -n 1)
-
-# 获取master节点IP地址
-MASTER_ADDR=$(getent hosts $MASTER_NODE | awk '{ print $1 }' || echo $MASTER_NODE)
-echo "Master address: $MASTER_ADDR"
+# 创建wrapper脚本
+cat > /tmp/deepspeed_python_wrapper.sh << 'EOF'
+#!/bin/bash
+source /home/user/Desktop/nanochat_distributed/.venv/bin/activate
+exec python3 "$@"
+EOF
+chmod +x /tmp/deepspeed_python_wrapper.sh
 
 deepspeed --launcher=slurm \
     --hostfile $HOSTFILE \
     --no_ssh_check \
-    --master_addr=$MASTER_ADDR \
-    --master_port=29500 \
-    --num_nodes=2 \
-    --num_gpus=2 \
     scripts/base_train_DP.py \
+    /tmp/deepspeed_python_wrapper.sh \
     --deepspeed \
     --deepspeed_config ds_config.json \
     --depth=1 \
