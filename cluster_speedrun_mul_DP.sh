@@ -15,6 +15,12 @@ export OMP_NUM_THREADS=1
 export NANOCHAT_BASE_DIR="$HOME/.cache/nanochat"
 mkdir -p $NANOCHAT_BASE_DIR
 
+export RANK=${SLURM_PROCID}
+export WORLD_SIZE=${SLURM_NTASKS}
+export LOCAL_RANK=${SLURM_LOCALID}
+export MASTER_ADDR=$(scontrol show hostnames "$SLURM_JOB_NODELIST" | head -n 1)
+export MASTER_PORT=29500
+
 echo "Host="$(hostname)
 echo "NODELIST="${SLURM_NODELIST}
 echo "SLURM_NNODES="${SLURM_NNODES}
