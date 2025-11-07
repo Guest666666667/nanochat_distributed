@@ -4,8 +4,8 @@
 #SBATCH --nodes=2
 #SBATCH --gpus=4
 #SBATCH --gpus-per-node=2
-#SBATCH --ntasks-per-node=1
-#SBATCH --cpus-per-task=16
+#SBATCH --ntasks-per-node=2
+#SBATCH --cpus-per-task=8
 #SBATCH --output=logs/nanochat-%N-%j.out
 #SBATCH --mem=0
 #SBATCH --nodelist=node4,node5
@@ -43,7 +43,16 @@ fi
 source .venv/bin/activate
 python3 -m nanochat.report reset
 
+HOSTFILE="/tmp/deepspeed_hostfile_${SLURM_JOB_ID}"
+scontrol show hostnames "$SLURM_JOB_NODELIST" | while read node; do
+    echo "${node} slots=${SLURM_GPUS_PER_NODE}" >> $HOSTFILE
+done
+
+echo "Generated hostfile:"
+cat $HOSTFILE
+
 deepspeed --launcher=slurm \
+    --hostfile $HOSTFILE \
     --num_nodes=2 \
     --num_gpus=2 \
     scripts/base_train_DP.py \

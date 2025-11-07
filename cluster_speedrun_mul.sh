@@ -6,8 +6,8 @@
 #SBATCH --nodes=2
 #SBATCH --gpus=4
 #SBATCH --gpus-per-node=2
-#SBATCH --ntasks-per-node=1
-#SBATCH --cpus-per-task=16
+#SBATCH --ntasks-per-node=2
+#SBATCH --cpus-per-task=8
 #SBATCH --output=logs/nanochat-%N-%j.out
 #SBATCH --mem=0
 #SBATCH --nodelist=node4,node5
@@ -55,5 +55,5 @@ NPROC_PER_NODE=2
 srun torchrun --nnodes=2 --nproc_per_node=$NPROC_PER_NODE --rdzv_backend=c10d --rdzv_endpoint=$MASTER_ADDR:$MASTER_PORT -m scripts.base_train -- --depth=1 --device_batch_size=1 --num_iterations=3 --run=$WANDB_RUN
 
 # 生成报告 (只在主节点执行)
-python3 -m nanochat.report generatex
+python3 -m nanochat.report generate
 echo "Training Done!"
