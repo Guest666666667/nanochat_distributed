@@ -59,6 +59,8 @@ cat $HOSTFILE
 
 deepspeed --launcher=slurm \
     --hostfile $HOSTFILE \
+    --num_nodes=2 \
+    --num_gpus=2 \
     --no_ssh_check \
     scripts/base_train_DP.py \
     --deepspeed_config=ds_config.json \
