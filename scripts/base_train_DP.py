@@ -13,10 +13,10 @@ python -m scripts.base_train --depth=4 --max_seq_len=512 --device_batch_size=1 -
 
 import os
 os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
-# import sys
-# venv_path = '/home/user/Desktop/nanochat_distributed/.venv/lib/python3.10/site-packages'
-# if os.path.exists(venv_path):
-#     sys.path.insert(0, venv_path)
+import sys
+venv_path = '/home/user/Desktop/nanochat_distributed/.venv/lib/python3.10/site-packages'
+if os.path.exists(venv_path):
+    sys.path.insert(0, venv_path)
 import time
 from contextlib import nullcontext
 
