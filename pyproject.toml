@@ -75,4 +75,5 @@ conflicts = [
         { extra = "cpu" },  
         { extra = "gpu" },  
     ],  
-]  
+]
+no-binary = ["deepspeed"]
