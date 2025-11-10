@@ -17,6 +17,8 @@ fi
 source "$HOME/.cargo/env"
 uv run maturin develop --release --manifest-path rustbpe/Cargo.toml
 
+which python
+which pip
 # DeepSpeed installation
 command -v ds_report &> /dev/null || pip install deepspeed
 echo "DeepSpeed installation check:"
