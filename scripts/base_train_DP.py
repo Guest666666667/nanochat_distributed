@@ -114,7 +114,7 @@ print0(f"Total batch size {total_batch_size:,} => gradient accumulation steps: {
 # -----------------------------------------------------------------------------
 # Initialize the Model
 model_config_kwargs = dict(sequence_len=max_seq_len, vocab_size=vocab_size, n_layer=num_layers, n_head=num_heads, n_kv_head=num_kv_heads, n_embd=model_dim)
-with torch.device("meta"):
+with deepspeed.zero.Init(config_dict_or_path=deepspeed_config):
     model_config = GPTConfig(**model_config_kwargs)
     model = GPT(model_config)
 # model.to_empty(device=device)
