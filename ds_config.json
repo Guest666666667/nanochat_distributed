@@ -8,7 +8,7 @@
       "lr": 0.001
     }
   },
-  "fp16": {
+  "bf16": {
     "enabled": True
   },
   "zero_optimization": {
