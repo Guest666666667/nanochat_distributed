@@ -122,8 +122,8 @@ def get_dist_info():
     if is_ddp():
         ddp_rank = int(os.environ.get('SLURM_PROCID'))
         ddp_local_rank = int(os.environ.get('SLURM_LOCALID'))
-        # ddp_world_size = int(os.environ.get('SLURM_NTASKS'))
-        ddp_world_size = 4
+        ddp_world_size = int(os.environ.get('SLURM_NTASKS'))
+        # ddp_world_size = 4
         print(f"ddp_rank: ${ddp_rank}, ddp_local_rank: ${ddp_local_rank}, ddp_world_size: ${ddp_world_size}")
         return True, ddp_rank, ddp_local_rank, ddp_world_size
     else:
