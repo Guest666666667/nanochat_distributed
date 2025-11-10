@@ -73,15 +73,6 @@ deepspeed  --num_nodes $NUM_NODES \
     --num_iterations=3 \
     --run=$WANDB_RUN
 
-#deepspeed --launcher=slurm \
-#    --hostfile $HOSTFILE \
-#    --no_ssh_check \
-#    scripts/base_train_DP.py \
-#    --deepspeed_config=ds_config.json \
-#    --depth=1 \
-#    --device_batch_size=1 \
-#    --num_iterations=3 \
-#    --run=$WANDB_RUN
 
 # 生成报告
 python3 -m nanochat.report_DP generate
