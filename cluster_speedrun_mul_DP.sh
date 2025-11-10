@@ -49,6 +49,11 @@ if [ -z "$WANDB_RUN" ]; then
 fi
 
 source .venv/bin/activate
+which python3
+
+# 检查 deepspeed 是否可导入并打印其安装路径
+python3 -c "import deepspeed, sys; print('✅ DeepSpeed import OK'); print('📦 DeepSpeed path:', deepspeed.__file__); print('🐍 Python sys.path[0]:', sys.path[0])"
+
 python3 -m nanochat.report_DP reset
 
 HOSTFILE="/tmp/deepspeed_hostfile_${SLURM_JOB_ID}"
