@@ -63,10 +63,10 @@ explicit = true
 
 [project.optional-dependencies]  
 cpu = [  
-    "torch>=2.8.0",  
+    "torch>=2.6.0",
 ]  
 gpu = [  
-    "torch>=2.8.0",  
+    "torch>=2.6.0",
 ]  
   
 [tool.uv]  
