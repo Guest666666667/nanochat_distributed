@@ -2,6 +2,7 @@
 #SBATCH --job-name=nanochat_deepspeed
 #SBATCH --time=12:00:00
 #SBATCH --nodes=2
+#SBATCH --ntasks-per-node=2
 #SBATCH --gres=gpu:2
 #SBATCH --cpus-per-task=8
 #SBATCH --output=logs/nanochat-%N-%j.out
@@ -20,13 +21,13 @@ export MASTER_ADDR=$(scontrol show hostnames "$SLURM_JOB_NODELIST" | head -n 1)
 export MASTER_PORT=29500
 export NUM_NODES=2
 export NUM_GPUS=4
-export PYTHONPATH="/home/user/Desktop/nanochat_distributed/.venv/lib/python3.10/site-packages:$PYTHONPATH"
+#export PYTHONPATH="/home/user/Desktop/nanochat_distributed/.venv/lib/python3.10/site-packages:$PYTHONPATH"
 
 
 echo "Host="$(hostname)
 echo "NODELIST="${SLURM_NODELIST}
 echo "SLURM_NNODES="${SLURM_NNODES}
-#echo "SLURM_NTASKS="${SLURM_NTASKS}
+echo "SLURM_NTASKS="${SLURM_NTASKS}
 
 # 检查必要文件
 if [ ! -f "$NANOCHAT_BASE_DIR/tokenizer/tokenizer.pkl" ]; then
