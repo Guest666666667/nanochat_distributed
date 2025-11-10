@@ -124,6 +124,7 @@ def get_dist_info():
         ddp_rank = int(os.environ['RANK'])
         ddp_local_rank = int(os.environ['LOCAL_RANK'])
         ddp_world_size = int(os.environ['WORLD_SIZE'])
+        print(f"ddp_rank: ${ddp_rank}, ddp_local_rank: ${ddp_local_rank}, ddp_world_size: ${ddp_world_size}")
         return True, ddp_rank, ddp_local_rank, ddp_world_size
     else:
         return False, 0, 0, 1

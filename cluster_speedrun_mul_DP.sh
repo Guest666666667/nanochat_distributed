@@ -2,7 +2,6 @@
 #SBATCH --job-name=nanochat_deepspeed
 #SBATCH --time=12:00:00
 #SBATCH --nodes=2
-#SBATCH --ntasks-per-node=2
 #SBATCH --gres=gpu:2
 #SBATCH --cpus-per-task=8
 #SBATCH --output=logs/nanochat-%N-%j.out
@@ -25,7 +24,7 @@ export NUM_GPUS=4
 echo "Host="$(hostname)
 echo "NODELIST="${SLURM_NODELIST}
 echo "SLURM_NNODES="${SLURM_NNODES}
-echo "SLURM_NTASKS="${SLURM_NTASKS}
+#echo "SLURM_NTASKS="${SLURM_NTASKS}
 
 # 检查必要文件
 if [ ! -f "$NANOCHAT_BASE_DIR/tokenizer/tokenizer.pkl" ]; then
@@ -52,7 +51,7 @@ python3 -m nanochat.report reset
 
 HOSTFILE="/tmp/deepspeed_hostfile_${SLURM_JOB_ID}"
 scontrol show hostnames "$SLURM_JOB_NODELIST" | while read node; do
-    echo "${node} slots=${SLURM_GPUS_PER_NODE}" >> $HOSTFILE
+    echo "${node} slots=2" >> $HOSTFILE
 done
 
 echo "Generated hostfile:"
