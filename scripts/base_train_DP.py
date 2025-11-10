@@ -117,14 +117,15 @@ model_config_kwargs = dict(sequence_len=max_seq_len, vocab_size=vocab_size, n_la
 with deepspeed.zero.Init(config_dict_or_path=deepspeed_config):
     model_config = GPTConfig(**model_config_kwargs)
     model = GPT(model_config)
-# model.to_empty(device=device)
-# model.init_weights()
 orig_model = model # original, uncompiled model, for saving raw model state_dict
-# model = torch.compile(model, dynamic=False)
-num_params = sum(p.numel() for p in model.parameters())
+
+num_params = sum(p.ds_numel for p in model.parameters())
 print0(f"Number of parameters: {num_params:,}")
-num_flops_per_token = model.estimate_flops()
-print0(f"Estimated FLOPs per token: {num_flops_per_token:e}")
+with deepspeed.zero.GatheredParameters(list(model.parameters())):
+    # num_params = sum(p.numel() for p in model.parameters())
+    # print0(f"Number of parameters: {num_params:,}")
+    num_flops_per_token = model.estimate_flops()
+    print0(f"Estimated FLOPs per token: {num_flops_per_token:e}")
 
 # Calculate number of iterations. Either it is given, or from target flops, or from target data:param ratio (in that order)
 assert num_iterations > 0 or target_param_data_ratio > 0 or target_flops > 0
