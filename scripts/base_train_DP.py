@@ -267,6 +267,7 @@ for step in range(num_iterations + 1):
             with autocast_ctx:
                 sample, _ = engine.generate_batch(tokens, num_samples=1, max_tokens=16, temperature=0)
             print0(tokenizer.decode(sample[0]))
+        print0("Model eval done!")
         model_engine.train()
 
     # save checkpoint at the end of the run (only on master process)
