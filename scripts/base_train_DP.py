@@ -123,7 +123,12 @@ model_config = GPTConfig(**model_config_kwargs)
 model = GPT(model_config)
 orig_model = model # original, uncompiled model, for saving raw model state_dict
 
-num_params = sum(p.ds_numel for p in model.parameters())
+# num_params = sum(p.ds_numel for p in model.parameters())
+# For both ZeRO-2 and ZeRO-3
+num_params = sum(
+    p.ds_numel if hasattr(p, 'ds_numel') else p.numel()
+    for p in model.parameters()
+)
 print0(f"Number of parameters: {num_params:,}")
 with deepspeed.zero.GatheredParameters(list(model.parameters())):
     # num_params = sum(p.numel() for p in model.parameters())
