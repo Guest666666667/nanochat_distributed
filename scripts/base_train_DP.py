@@ -295,10 +295,11 @@ for step in range(num_iterations + 1):
     t0 = time.time()
     for micro_step in range(grad_accum_steps):
         with autocast_ctx:
-            loss = model(x, y)
+            loss = model_engine(x, y)
         train_loss = loss.detach() # for logging
         model_engine.backward(loss)
-        x, y = next(train_loader) # prefetch the next batch while the GPU is busy with forward/backward
+        if micro_step < grad_accum_steps - 1:
+            x, y = next(train_loader)
     # step the optimizers
     lrm = get_lr_multiplier(step)
     for param_group in optimizer.param_groups:
