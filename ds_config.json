@@ -13,7 +13,7 @@
     "enabled": True
   },
   "zero_optimization": {
-    "stage": 3
+    "stage": 2
   },
   "gradient_clipping": 1.0
 }
