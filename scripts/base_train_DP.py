@@ -271,7 +271,7 @@ for step in range(num_iterations + 1):
         model_engine.train()
 
     # save checkpoint at the end of the run (only on master process)
-    if master_process:
+    if last_step:
         # in deepspeed, every rank should save the checkpoint
         output_dirname = model_tag if model_tag else f"d{depth}" # e.g. d12
         checkpoint_dir = os.path.join(base_dir, "base_checkpoints", output_dirname)
