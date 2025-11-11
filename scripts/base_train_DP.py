@@ -114,9 +114,13 @@ print0(f"Total batch size {total_batch_size:,} => gradient accumulation steps: {
 # -----------------------------------------------------------------------------
 # Initialize the Model
 model_config_kwargs = dict(sequence_len=max_seq_len, vocab_size=vocab_size, n_layer=num_layers, n_head=num_heads, n_kv_head=num_kv_heads, n_embd=model_dim)
-with deepspeed.zero.Init(config_dict_or_path=deepspeed_config):
-    model_config = GPTConfig(**model_config_kwargs)
-    model = GPT(model_config)
+# For ZeRO-3 only
+# with deepspeed.zero.Init(config_dict_or_path=deepspeed_config):
+#     model_config = GPTConfig(**model_config_kwargs)
+#     model = GPT(model_config)
+# For ZeRO-2
+model_config = GPTConfig(**model_config_kwargs)
+model = GPT(model_config)
 orig_model = model # original, uncompiled model, for saving raw model state_dict
 
 num_params = sum(p.ds_numel for p in model.parameters())
