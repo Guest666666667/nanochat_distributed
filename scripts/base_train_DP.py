@@ -294,8 +294,7 @@ for step in range(num_iterations + 1):
     synchronize()
     t0 = time.time()
     for micro_step in range(grad_accum_steps):
-        with autocast_ctx:
-            loss = model_engine(x, y)
+        loss = model_engine(x, y)
         train_loss = loss.detach() # for logging
         model_engine.backward(loss)
         if micro_step < grad_accum_steps - 1:
@@ -321,7 +320,10 @@ for step in range(num_iterations + 1):
     if step > 10:
         total_training_time += dt # only count the time after the first 10 steps
     grad_norm = model_engine.get_global_grad_norm()
-    print_grad_norm = f" grad norm: {grad_norm:.4f} |"
+    if grad_norm is not None:
+        print_grad_norm = f" grad norm: {grad_norm:.4f} |"
+    else:
+        print_grad_norm = " grad norm: N/A |"
     print0(f"step {step:05d}/{num_iterations:05d} ({pct_done:.2f}%) | loss: {debiased_smooth_loss:.6f} |{print_grad_norm} lrm: {lrm:.2f} | dt: {dt * 1000:.2f}ms | tok/sec: {tok_per_sec:,} | mfu: {mfu:.2f} | total time: {total_training_time/60:.2f}m")
     if step % 100 == 0:
         log_data = {
