@@ -272,6 +272,7 @@ for step in range(num_iterations + 1):
 
     # save checkpoint at the end of the run (only on master process)
     if master_process and last_step:
+        print(f"master! ddp_rank:{ddp_rank}, ddp_local_rank: {ddp_local_rank}, ddp_world_size: {ddp_world_size}")
         output_dirname = model_tag if model_tag else f"d{depth}" # e.g. d12
         checkpoint_dir = os.path.join(base_dir, "base_checkpoints", output_dirname)
         model_engine.save_checkpoint(checkpoint_dir, tag=f"step_{step}")
