@@ -303,11 +303,21 @@ for step in range(num_iterations + 1):
         model_engine.backward(loss)
         if micro_step < grad_accum_steps - 1:
             x, y = next(train_loader)
+        print0(f"Learning rate: {optimizer.param_groups[0]['lr']:.6f}")
+        print0(f"DeepSpeed gradient_accumulation_steps: {model_engine.gradient_accumulation_steps()}")
+        print0(f"Actual grad_accum_steps in code: {grad_accum_steps}")
+
     # step the optimizers
     lrm = get_lr_multiplier(step)
     for param_group in optimizer.param_groups:
         param_group["lr"] = param_group["initial_lr"] * lrm
+
+    param_before = next(model_engine.parameters()).clone()
     model_engine.step()
+    param_after = next(model_engine.parameters())
+    param_diff = (param_after - param_before).abs().max()
+    print0(f"Max parameter change: {param_diff:.6e}")
+
     synchronize()
     t1 = time.time()
     dt = t1 - t0
