@@ -13,7 +13,7 @@
     "enabled": true
   },
   "zero_optimization": {
-    "stage": 2,
+    "stage": 0,
     "overlap_comm": false,
     "contiguous_gradients": true
   },
