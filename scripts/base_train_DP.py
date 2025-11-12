@@ -297,27 +297,13 @@ for step in range(num_iterations + 1):
     # evaluate the gradient
     synchronize()
     t0 = time.time()
-
-    losses = []
     for micro_step in range(grad_accum_steps):
         loss = model_engine(x, y)
-
-        losses.append(loss.detach().item())
         train_loss = loss.detach() # for logging
         model_engine.backward(loss)
         if micro_step < grad_accum_steps - 1:
             x, y = next(train_loader)
-
-    # 打印每个micro_step的loss
-    print0(f"Micro-step losses: {losses}")
-    print0(f"Average loss: {sum(losses) / len(losses):.6f}")
-
-    # 检查学习率
-    print0(f"Current lrm: {lrm:.6f}")
-    for i, param_group in enumerate(optimizer.param_groups):
-        print0(f"Optimizer {i} lr: {param_group['lr']:.6f}")
-
-        # step the optimizers
+    # step the optimizers
     lrm = get_lr_multiplier(step)
     for param_group in optimizer.param_groups:
         param_group["lr"] = param_group["initial_lr"] * lrm
