@@ -301,6 +301,28 @@ for step in range(num_iterations + 1):
         loss = model_engine(x, y)
         train_loss = loss.detach() # for logging
         model_engine.backward(loss)
+
+        # ---- 在 backward 之后 ----
+        print0("=== DEBUG AFTER BACKWARD ===")
+        # engine provided global grad norm (may be None with ZeRO)
+        try:
+            gnorm = model_engine.get_global_grad_norm()
+            print0("engine.get_global_grad_norm() ->", gnorm)
+        except Exception as e:
+            print0("engine.get_global_grad_norm() exception:", e)
+
+        # local grad existence check
+        have_grad = False
+        first_non_none = None
+        for name, p in model_engine.module.named_parameters():
+            if p.grad is not None:
+                have_grad = True
+                if first_non_none is None:
+                    first_non_none = (name, tuple(p.grad.shape), p.grad.device, p.grad.dtype)
+        # print result
+        print0("any param has local grad? ", have_grad)
+        print0("first non-none grad info:", first_non_none)
+
         if micro_step < grad_accum_steps - 1:
             x, y = next(train_loader)
     # step the optimizers
