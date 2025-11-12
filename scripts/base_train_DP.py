@@ -297,31 +297,27 @@ for step in range(num_iterations + 1):
     # evaluate the gradient
     synchronize()
     t0 = time.time()
+
+    losses = []
     for micro_step in range(grad_accum_steps):
         loss = model_engine(x, y)
+
+        losses.append(loss.detach().item())
         train_loss = loss.detach() # for logging
         model_engine.backward(loss)
         if micro_step < grad_accum_steps - 1:
             x, y = next(train_loader)
 
-    # ---- 在 backward 之后 ----
-    print0("=== DEBUG AFTER BACKWARD ===")
-    try:
-        gnorm = model_engine.get_global_grad_norm()
-        print0(f"engine.get_global_grad_norm() -> {gnorm}")
-    except Exception as e:
-        print0(f"engine.get_global_grad_norm() exception:{e}")
-    have_grad = False
-    first_non_none = None
-    for name, p in model_engine.module.named_parameters():
-        if p.grad is not None:
-            have_grad = True
-            if first_non_none is None:
-                first_non_none = (name, tuple(p.grad.shape), p.grad.device, p.grad.dtype)
-    print0(f"any param has local grad? {have_grad}")
-    print0(f"first non-none grad info: {first_non_none}")
+    # 打印每个micro_step的loss
+    print0(f"Micro-step losses: {losses}")
+    print0(f"Average loss: {sum(losses) / len(losses):.6f}")
 
-    # step the optimizers
+    # 检查学习率
+    print0(f"Current lrm: {lrm:.6f}")
+    for i, param_group in enumerate(optimizer.param_groups):
+        print0(f"Optimizer {i} lr: {param_group['lr']:.6f}")
+
+        # step the optimizers
     lrm = get_lr_multiplier(step)
     for param_group in optimizer.param_groups:
         param_group["lr"] = param_group["initial_lr"] * lrm
