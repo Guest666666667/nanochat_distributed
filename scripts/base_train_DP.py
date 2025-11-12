@@ -219,7 +219,7 @@ for step in range(num_iterations + 1):
         val_loader = build_val_loader()
         eval_steps = eval_tokens // (device_batch_size * max_seq_len * ddp_world_size)
         with autocast_ctx:
-            val_bpb = evaluate_bpb(model, val_loader, eval_steps, token_bytes)
+            val_bpb = evaluate_bpb(model_engine.module, val_loader, eval_steps, token_bytes)
         print0(f"Step {step:05d} | Validation bpb: {val_bpb:.4f}")
         if val_bpb < min_val_bpb:
             min_val_bpb = val_bpb
