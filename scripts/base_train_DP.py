@@ -335,9 +335,6 @@ for step in range(num_iterations + 1):
     param_after = next(model_engine.parameters())
     param_diff = (param_after - param_before).abs().max()
     print0(f"Max parameter change: {param_diff:.6e}")
-    # 检查梯度是否被清零
-    grad_after_step = next(model_engine.parameters()).grad
-    print0(f"Grad after step: {grad_after_step}")
 
     synchronize()
     t1 = time.time()
