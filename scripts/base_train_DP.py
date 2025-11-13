@@ -302,13 +302,11 @@ for step in range(num_iterations + 1):
         train_loss = loss.detach() # for logging
         model_engine.backward(loss)
 
-        print0(f"-----------------------------------------")
         if micro_step == 0:  # 只在第一个micro_step检查
             for name, p in model_engine.module.named_parameters():
                 if p.grad is not None:
                     print0(f"Grad exists for {name}: norm={p.grad.norm().item():.6e}")
                     break
-        print0(f"-----------------------------------------")
 
         if micro_step < grad_accum_steps - 1:
             x, y = next(train_loader)
