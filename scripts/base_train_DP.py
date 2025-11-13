@@ -299,6 +299,7 @@ for step in range(num_iterations + 1):
     t0 = time.time()
 
     loss = model_engine(x, y)
+    train_loss = loss.detach() # for logging
     model_engine.backward(loss)
     for name, p in model_engine.module.named_parameters():
         if p.grad is not None:
