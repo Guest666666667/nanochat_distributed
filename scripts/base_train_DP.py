@@ -304,11 +304,15 @@ for step in range(num_iterations + 1):
         model_engine.backward(loss)
 
         param_before = next(model_engine.parameters()).clone()
+        grad_before = model_engine.get_global_grad_norm()
         model_engine.step()
-        # print0(f"After step - DeepSpeed micro_steps: {model_engine.micro_steps}")
-        # param_after = next(model_engine.parameters())
-        # param_diff = (param_after - param_before).abs().max()
-        # print0(f"Max parameter change: {param_diff:.6e}")
+        print0(f"After step - DeepSpeed micro_steps: {model_engine.micro_steps}")
+        param_after = next(model_engine.parameters())
+        grad_after = model_engine.get_global_grad_norm()
+
+        param_diff = (param_after - param_before).abs().max()
+        print0(f"Max parameter change: {param_diff:.6e}")
+        print0(f"Grad norm: {grad_before},{grad_after}")
 
         if micro_step < grad_accum_steps - 1:
             x, y = next(train_loader)
