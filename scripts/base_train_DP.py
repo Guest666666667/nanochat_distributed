@@ -298,25 +298,17 @@ for step in range(num_iterations + 1):
     synchronize()
     t0 = time.time()
 
-
-    # loss = model_engine(x, y)
-    # train_loss = loss.detach()  # for logging
-    # model_engine.backward(loss)
-    # x, y = next(train_loader)
-
-
     for micro_step in range(grad_accum_steps):
         loss = model_engine(x, y)
         train_loss = loss.detach() # for logging
         model_engine.backward(loss)
 
         param_before = next(model_engine.parameters()).clone()
-        print0(f"Before step - DeepSpeed micro_steps: {model_engine.micro_steps}")
         model_engine.step()
-        print0(f"After step - DeepSpeed micro_steps: {model_engine.micro_steps}")
-        param_after = next(model_engine.parameters())
-        param_diff = (param_after - param_before).abs().max()
-        print0(f"Max parameter change: {param_diff:.6e}")
+        # print0(f"After step - DeepSpeed micro_steps: {model_engine.micro_steps}")
+        # param_after = next(model_engine.parameters())
+        # param_diff = (param_after - param_before).abs().max()
+        # print0(f"Max parameter change: {param_diff:.6e}")
 
         if micro_step < grad_accum_steps - 1:
             x, y = next(train_loader)
@@ -326,15 +318,6 @@ for step in range(num_iterations + 1):
     for param_group in optimizer.param_groups:
         param_group["lr"] = param_group["initial_lr"] * lrm
     print0(f"Learning rate: {optimizer.param_groups[0]['lr']:.6f}")
-    # print0(f"DeepSpeed gradient_accumulation_steps: {model_engine.gradient_accumulation_steps()}")
-    # print0(f"Actual grad_accum_steps in code: {grad_accum_steps}")
-    # param_before = next(model_engine.parameters()).clone()
-    # print0(f"Before step - DeepSpeed micro_steps: {model_engine.micro_steps}")
-    # model_engine.step()
-    # print0(f"After step - DeepSpeed micro_steps: {model_engine.micro_steps}")
-    # param_after = next(model_engine.parameters())
-    # param_diff = (param_after - param_before).abs().max()
-    # print0(f"Max parameter change: {param_diff:.6e}")
 
     synchronize()
     t1 = time.time()
