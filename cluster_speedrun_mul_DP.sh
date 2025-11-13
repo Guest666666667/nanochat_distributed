@@ -68,7 +68,7 @@ deepspeed  --num_nodes $NUM_NODES \
     --deepspeed_config=ds_config.json \
     --depth=1 \
     --device_batch_size=1 \
-    --num_iterations=70 \
+    --num_iterations=10 \
     --run=$WANDB_RUN
 
 
