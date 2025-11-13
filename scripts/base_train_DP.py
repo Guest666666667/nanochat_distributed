@@ -215,11 +215,15 @@ for step in range(num_iterations + 1):
     # once in a while: evaluate the val bpb (all ranks participate)
     if last_step or step % eval_every == 0:
         print0(f"Step {step:05d} | Validation...")
+        print0(f"[Rank {ddp_rank}] Before model_engine.eval()")
         model_engine.eval()
+        print0(f"[Rank {ddp_rank}] After model_engine.eval()")
         val_loader = build_val_loader()
         eval_steps = eval_tokens // (device_batch_size * max_seq_len * ddp_world_size)
+        print0(f"[Rank {ddp_rank}] Starting evaluate_bpb with {eval_steps} steps")
         with autocast_ctx:
             val_bpb = evaluate_bpb(model_engine.module, val_loader, eval_steps, token_bytes)
+        print0(f"[Rank {ddp_rank}] Finished evaluate_bpb: {val_bpb:.4f}")
         print0(f"Step {step:05d} | Validation bpb: {val_bpb:.4f}")
         if val_bpb < min_val_bpb:
             min_val_bpb = val_bpb
