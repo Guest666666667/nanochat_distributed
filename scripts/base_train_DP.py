@@ -118,7 +118,7 @@ model_config_kwargs = dict(sequence_len=max_seq_len, vocab_size=vocab_size, n_la
 # with deepspeed.zero.Init(config_dict_or_path=deepspeed_config):
 #     model_config = GPTConfig(**model_config_kwargs)
 #     model = GPT(model_config)
-# For ZeRO-2
+# For ZeRO-2/1/0
 model_config = GPTConfig(**model_config_kwargs)
 model = GPT(model_config)
 orig_model = model # original, uncompiled model, for saving raw model state_dict
@@ -300,6 +300,7 @@ for step in range(num_iterations + 1):
     for micro_step in range(grad_accum_steps):
         loss = model_engine(x, y)
         train_loss = loss.detach() # for logging
+        loss = loss / grad_accum_steps
         model_engine.backward(loss)
         if micro_step < grad_accum_steps - 1:
             x, y = next(train_loader)
