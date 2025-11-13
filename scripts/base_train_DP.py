@@ -297,19 +297,28 @@ for step in range(num_iterations + 1):
     # evaluate the gradient
     synchronize()
     t0 = time.time()
-    for micro_step in range(grad_accum_steps):
-        loss = model_engine(x, y)
-        train_loss = loss.detach() # for logging
-        model_engine.backward(loss)
 
-        if micro_step == 0:  # 只在第一个micro_step检查
-            for name, p in model_engine.module.named_parameters():
-                if p.grad is not None:
-                    print0(f"Grad exists for {name}: norm={p.grad.norm().item():.6e}")
-                    break
+    loss = model_engine(x, y)
+    model_engine.backward(loss)
+    for name, p in model_engine.module.named_parameters():
+        if p.grad is not None:
+            print0(f"Grad exists for {name}: norm={p.grad.norm().item():.6e}")
+            break
+    x, y = next(train_loader)
 
-        if micro_step < grad_accum_steps - 1:
-            x, y = next(train_loader)
+    # for micro_step in range(grad_accum_steps):
+    #     loss = model_engine(x, y)
+    #     train_loss = loss.detach() # for logging
+    #     model_engine.backward(loss)
+    #
+    #     if micro_step == 0:  # 只在第一个micro_step检查
+    #         for name, p in model_engine.module.named_parameters():
+    #             if p.grad is not None:
+    #                 print0(f"Grad exists for {name}: norm={p.grad.norm().item():.6e}")
+    #                 break
+    #
+    #     if micro_step < grad_accum_steps - 1:
+    #         x, y = next(train_loader)
 
     # step the optimizers
     lrm = get_lr_multiplier(step)
