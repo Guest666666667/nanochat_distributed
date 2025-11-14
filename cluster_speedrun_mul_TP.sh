@@ -64,7 +64,7 @@ deepspeed  --num_nodes $NUM_NODES \
     --master_addr $MASTER_ADDR \
     --master_port $MASTER_PORT \
     --launcher SLURM \
-    scripts/base_train_DP.py \
+    scripts/base_train_TP.py \
     --deepspeed_config=ds_config_TP.json \
     --depth=1 \
     --device_batch_size=1 \
@@ -73,5 +73,5 @@ deepspeed  --num_nodes $NUM_NODES \
 
 
 # 生成报告
-python3 -m nanochat.report_DP generate
+python3 -m nanochat.report_TP generate
 echo "Training Done!"
