@@ -25,7 +25,7 @@ import wandb
 import torch
 import deepspeed
 
-from nanochat.gpt import GPT, GPTConfig
+from nanochat.gpt import GPT, GPTConfig, Block
 from nanochat.dataloader_TP import tokenizing_distributed_data_loader
 from nanochat.common_deepspeed import compute_init, compute_cleanup, print0, DummyWandb, print_banner, get_base_dir, autodetect_device_type
 from nanochat.tokenizer import get_tokenizer, get_token_bytes
@@ -76,10 +76,9 @@ user_config = {k: globals()[k] for k in config_keys} # will be useful for loggin
 # Compute init
 device_type = autodetect_device_type() if device_type == "" else device_type
 ddp, ddp_rank, ddp_local_rank, ddp_world_size, device = compute_init(device_type)
-print(f"ddp_rank:{ddp_rank}, ddp_local_rank: {ddp_local_rank}, ddp_world_size: {ddp_world_size}")
 tp_size = 2
 dp_world_size = ddp_world_size // tp_size
-print(f"tp_size:{tp_size}, dp_world_size: {dp_world_size}")
+print(f"ddp_rank:{ddp_rank}, ddp_local_rank: {ddp_local_rank}, ddp_world_size: {ddp_world_size}, tp_size:{tp_size}, dp_world_size: {dp_world_size}")
 master_process = ddp_rank == 0 # this process will do logging, checkpointing etc.
 autocast_ctx = torch.amp.autocast(device_type=device_type, dtype=torch.bfloat16) if device_type == "cuda" else nullcontext()
 synchronize = torch.cuda.synchronize if device_type == "cuda" else lambda: None
@@ -171,11 +170,17 @@ param_groups = [
     }
 ]
 
-model = deepspeed.tp_model_init(model, tp_size=tp_size, dtype=torch.bfloat16)
+injection_policy = {
+    Block: [
+        "attn.c_proj",   # row-parallel, needs all-reduce
+        "mlp.c_proj"     # row-parallel, needs all-reduce
+    ]
+}
 model_engine, optimizer, _, _ = deepspeed.initialize(
     model=model,
     model_parameters=param_groups,
-    config=deepspeed_config
+    config=deepspeed_config,
+    injection_policy=injection_policy
 )
 
 # Initialize the DataLoaders for train/val
