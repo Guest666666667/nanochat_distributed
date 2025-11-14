@@ -1,0 +1,24 @@
+{
+  "train_batch_size": 524288,
+  "train_micro_batch_size_per_gpu": 2048,
+  "gradient_accumulation_steps": 64,
+  "optimizer": {
+    "type": "Adam",
+    "params": {
+      "lr": 0.02,
+      "torch_adam": true
+    }
+  },
+  "bf16": {
+    "enabled": true
+  },
+  "tensor_parallel": {
+    "autotp_size": 2
+  },
+  "zero_optimization": {
+    "stage": 0,
+    "overlap_comm": false,
+    "contiguous_gradients": true
+  },
+  "gradient_clipping": 1.0
+}

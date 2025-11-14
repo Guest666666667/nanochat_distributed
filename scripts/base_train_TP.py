@@ -26,7 +26,7 @@ import torch
 import deepspeed
 
 from nanochat.gpt import GPT, GPTConfig
-from nanochat.dataloader import tokenizing_distributed_data_loader
+from nanochat.dataloader_TP import tokenizing_distributed_data_loader
 from nanochat.common_deepspeed import compute_init, compute_cleanup, print0, DummyWandb, print_banner, get_base_dir, autodetect_device_type
 from nanochat.tokenizer import get_tokenizer, get_token_bytes
 # from nanochat.checkpoint_manager import save_checkpoint
@@ -36,7 +36,7 @@ from scripts.base_eval import evaluate_model
 print_banner()
 
 # -----------------------------------------------------------------------------
-deepspeed_config = "ds_config_DP.json"
+deepspeed_config = "ds_config_TP.json"
 # User settings
 run = "dummy" # wandb run name default ("dummy" is special - we won't log to wandb)
 # Runtime
@@ -77,6 +77,9 @@ user_config = {k: globals()[k] for k in config_keys} # will be useful for loggin
 device_type = autodetect_device_type() if device_type == "" else device_type
 ddp, ddp_rank, ddp_local_rank, ddp_world_size, device = compute_init(device_type)
 print(f"ddp_rank:{ddp_rank}, ddp_local_rank: {ddp_local_rank}, ddp_world_size: {ddp_world_size}")
+tp_size = 2
+dp_world_size = ddp_world_size // tp_size
+print(f"tp_size:{tp_size}, dp_world_size: {dp_world_size}")
 master_process = ddp_rank == 0 # this process will do logging, checkpointing etc.
 autocast_ctx = torch.amp.autocast(device_type=device_type, dtype=torch.bfloat16) if device_type == "cuda" else nullcontext()
 synchronize = torch.cuda.synchronize if device_type == "cuda" else lambda: None
@@ -105,7 +108,7 @@ print0(f"num_kv_heads: {num_kv_heads}")
 # Optimizer / data / training length related hyperparameters
 # figure out the needed gradient accumulation to reach the desired total batch size
 tokens_per_fwdbwd = device_batch_size * max_seq_len # tokens per iteration for a single rank
-world_tokens_per_fwdbwd = tokens_per_fwdbwd * ddp_world_size # total tokens per iteration for all ranks
+world_tokens_per_fwdbwd = tokens_per_fwdbwd * dp_world_size # total tokens per iteration for all ranks
 assert total_batch_size % world_tokens_per_fwdbwd == 0
 grad_accum_steps = total_batch_size // world_tokens_per_fwdbwd
 print0(f"Tokens / micro-batch / rank: {device_batch_size} x {max_seq_len} = {tokens_per_fwdbwd:,}")
@@ -167,6 +170,8 @@ param_groups = [
         "initial_lr": matrix_lr,
     }
 ]
+
+model = deepspeed.tp_model_init(model, tp_size=tp_size, dtype=torch.bfloat16)
 model_engine, optimizer, _, _ = deepspeed.initialize(
     model=model,
     model_parameters=param_groups,
@@ -176,8 +181,8 @@ model_engine, optimizer, _, _ = deepspeed.initialize(
 # Initialize the DataLoaders for train/val
 base_dir = get_base_dir()
 tokens_dir = os.path.join(base_dir, "tokenized_data")
-train_loader = tokenizing_distributed_data_loader(device_batch_size, max_seq_len, split="train", device=device)
-build_val_loader = lambda: tokenizing_distributed_data_loader(device_batch_size, max_seq_len, split="val", device=device)
+train_loader = tokenizing_distributed_data_loader(tp_size, device_batch_size, max_seq_len, split="train", device=device)
+build_val_loader = lambda: tokenizing_distributed_data_loader(tp_size, device_batch_size, max_seq_len, split="val", device=device)
 x, y = next(train_loader) # kick off load of the very first batch of data
 
 # -----------------------------------------------------------------------------
@@ -210,7 +215,7 @@ for step in range(num_iterations + 1):
     if last_step or step % eval_every == 0:
         model_engine.eval()
         val_loader = build_val_loader()
-        eval_steps = eval_tokens // (device_batch_size * max_seq_len * ddp_world_size)
+        eval_steps = eval_tokens // (device_batch_size * max_seq_len * dp_world_size)
         with autocast_ctx:
             val_bpb = evaluate_bpb(model_engine.module, val_loader, eval_steps, token_bytes)
         print0(f"Step {step:05d} | Validation bpb: {val_bpb:.4f}")

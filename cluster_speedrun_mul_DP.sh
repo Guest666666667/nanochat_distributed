@@ -48,7 +48,7 @@ if [ -z "$WANDB_RUN" ]; then
 fi
 
 source .venv/bin/activate
-python3 -m nanochat.report_DP reset
+python3 -m nanochat.report reset
 
 HOSTFILE="/tmp/deepspeed_hostfile_${SLURM_JOB_ID}"
 scontrol show hostnames "$SLURM_JOB_NODELIST" | while read node; do
@@ -65,7 +65,7 @@ deepspeed  --num_nodes $NUM_NODES \
     --master_port $MASTER_PORT \
     --launcher SLURM \
     scripts/base_train_DP.py \
-    --deepspeed_config=ds_config.json \
+    --deepspeed_config=ds_config_DP.json \
     --depth=1 \
     --device_batch_size=1 \
     --num_iterations=50 \

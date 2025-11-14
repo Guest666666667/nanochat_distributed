@@ -2,10 +2,9 @@
 #SBATCH --job-name=nanochat_deepspeed
 #SBATCH --time=12:00:00
 #SBATCH --nodes=2
-#SBATCH --gpus=4
-#SBATCH --gpus-per-node=2
-#SBATCH --ntasks-per-node=1
-#SBATCH --cpus-per-task=16
+#SBATCH --ntasks-per-node=2
+#SBATCH --gres=gpu:2
+#SBATCH --cpus-per-task=8
 #SBATCH --output=logs/nanochat-%N-%j.out
 #SBATCH --mem=0
 #SBATCH --nodelist=node4,node5
@@ -14,6 +13,14 @@
 export OMP_NUM_THREADS=1
 export NANOCHAT_BASE_DIR="$HOME/.cache/nanochat"
 mkdir -p $NANOCHAT_BASE_DIR
+
+export RANK=${SLURM_PROCID}
+export WORLD_SIZE=${SLURM_NTASKS}
+export LOCAL_RANK=${SLURM_LOCALID}
+export MASTER_ADDR=$(scontrol show hostnames "$SLURM_JOB_NODELIST" | head -n 1)
+export MASTER_PORT=29500
+export NUM_NODES=2
+export NUM_GPUS=4
 
 echo "Host="$(hostname)
 echo "NODELIST="${SLURM_NODELIST}
@@ -43,19 +50,28 @@ fi
 source .venv/bin/activate
 python3 -m nanochat.report reset
 
-# -----------------------------------------------------------------------------
-# DeepSpeed训练启动
-deepspeed --launcher=slurm \
-    --num_nodes=2 \
-    --num_gpus=2 \
-    scripts/base_train.py \
-    --deepspeed \
-    --deepspeed_config ds_config.json \
+HOSTFILE="/tmp/deepspeed_hostfile_${SLURM_JOB_ID}"
+scontrol show hostnames "$SLURM_JOB_NODELIST" | while read node; do
+    echo "${node} slots=2" >> $HOSTFILE
+done
+
+echo "Generated hostfile:"
+cat $HOSTFILE
+
+deepspeed  --num_nodes $NUM_NODES \
+    --num_gpus $NUM_GPUS \
+    --hostfile $HOSTFILE \
+    --master_addr $MASTER_ADDR \
+    --master_port $MASTER_PORT \
+    --launcher SLURM \
+    scripts/base_train_DP.py \
+    --deepspeed_config=ds_config_TP.json \
     --depth=1 \
     --device_batch_size=1 \
-    --num_iterations=3 \
+    --num_iterations=50 \
     --run=$WANDB_RUN
 
+
 # 生成报告
-python3 -m nanochat.report generate
+python3 -m nanochat.report_DP generate
 echo "Training Done!"
