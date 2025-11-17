@@ -86,7 +86,7 @@ user_config = {k: globals()[k] for k in config_keys}  # will be useful for loggi
 # Compute init
 device_type = autodetect_device_type() if device_type == "" else device_type
 ddp, ddp_rank, ddp_local_rank, ddp_world_size, device = compute_init(device_type)
-tp_size = 1
+tp_size = 2
 dp_size = ddp_world_size // tp_size
 tp_rank = ddp_rank % tp_size
 dp_rank = ddp_rank // tp_size
@@ -117,7 +117,8 @@ print0(f"Vocab size: {vocab_size:,}")
 # Model kwargs are derived from the desired depth of the model
 num_layers = depth
 model_dim = depth * 64  # aspect ratio 64 (usually this is varied from 64 -> 128 as model size increases)
-num_heads = max(1, (model_dim + 127) // 128)  # head dim 128 (the division here is ceil div)
+# num_heads = max(1, (model_dim + 127) // 128)  # head dim 128 (the division here is ceil div)
+num_heads = tp_size
 num_kv_heads = num_heads  # default is 1:1 GQA (Group Query Attention) ratio (i.e. GQA is disabled)
 print0(f"num_layers: {num_layers}")
 print0(f"model_dim: {model_dim}")
