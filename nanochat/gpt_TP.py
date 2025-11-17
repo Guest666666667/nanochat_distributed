@@ -57,16 +57,17 @@ class CausalSelfAttention(nn.Module):
         self.n_kv_head = config.n_kv_head
         self.n_embd = config.n_embd
         self.head_dim = self.n_embd // self.n_head
+        self.mp_group = mp_group
         assert self.n_embd % self.n_head == 0
         assert self.n_kv_head <= self.n_head and self.n_head % self.n_kv_head == 0
         c_q_linear = nn.Linear(self.n_embd, self.n_head * self.head_dim, bias=False)
         c_k_linear = nn.Linear(self.n_embd, self.n_kv_head * self.head_dim, bias=False)
         c_v_linear = nn.Linear(self.n_embd, self.n_kv_head * self.head_dim, bias=False)
         c_proj_linear = nn.Linear(self.n_embd, self.n_embd, bias=False)
-        self.c_q = LinearLayer(c_q_linear, mp_group=mp_group, name='c_q')
-        self.c_k = LinearLayer(c_k_linear, mp_group=mp_group, name='c_k')
-        self.c_v = LinearLayer(c_v_linear, mp_group=mp_group, name='c_v')
-        self.c_proj = LinearAllreduce(c_proj_linear, mp_group=mp_group, name='c_proj')
+        self.c_q = LinearLayer(c_q_linear, mp_group=self.mp_group, name='c_q')
+        self.c_k = LinearLayer(c_k_linear, mp_group=self.mp_group, name='c_k')
+        self.c_v = LinearLayer(c_v_linear, mp_group=self.mp_group, name='c_v')
+        self.c_proj = LinearAllreduce(c_proj_linear, mp_group=self.mp_group, name='c_proj')
 
     def forward(self, x, cos_sin, kv_cache):
         B, T, C = x.size()
