@@ -27,6 +27,12 @@ from nanochat.checkpoint_manager import save_checkpoint, load_checkpoint
 from nanochat.loss_eval import evaluate_bpb
 from nanochat.engine import Engine
 from scripts.base_eval import evaluate_model
+from deepspeed.module_inject.tp_shard import (
+    set_num_kv_heads,
+    set_n_embd,
+    set_num_attention_heads,
+    set_tp_grain_size
+)
 print_banner()
 
 # -----------------------------------------------------------------------------
@@ -113,6 +119,10 @@ print0(f"Total batch size {total_batch_size:,} => gradient accumulation steps: {
 model_config_kwargs = dict(sequence_len=max_seq_len, vocab_size=vocab_size, n_layer=num_layers, n_head=num_heads, n_kv_head=num_kv_heads, n_embd=model_dim)
 with torch.device("meta"):
     model_config = GPTConfig(**model_config_kwargs)
+    set_num_kv_heads(model_config.n_kv_head)
+    set_n_embd(model_config.n_embd)
+    set_num_attention_heads(model_config.n_head)
+    set_tp_grain_size(128)
     model = GPT(model_config)
 model.to_empty(device=device)
 model.init_weights()
