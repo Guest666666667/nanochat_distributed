@@ -250,16 +250,13 @@ for step in range(num_iterations + 1):
         print0(f"Step {step:05d} | Validation bpb: {val_bpb:.4f}")
         if val_bpb < min_val_bpb:
             min_val_bpb = val_bpb
-        print0("11111111111111111")
         wandb_run.log({
             "step": step,
             "total_training_flops": flops_so_far,
             "total_training_time": total_training_time,
             "val/bpb": val_bpb,
         })
-        print0("22222222222222222")
         model_engine.train()
-        print0("33333333333333333")
 
     # once in a while: estimate the CORE metric (all ranks participate)
     # use the original uncompiled model because the inputs keep changing shape
@@ -267,8 +264,10 @@ for step in range(num_iterations + 1):
     if core_metric_every > 0 and (last_step or (step > 0 and step % core_metric_every == 0)):
         model_engine.eval()
         orig_model = model_engine.module
+        print0("00000000000000000000")
         with autocast_ctx:
             results = evaluate_model(orig_model, tokenizer, device, max_per_task=core_metric_max_per_task)
+            print0("11111111111111111111111")
         print0(f"Step {step:05d} | CORE metric: {results['core_metric']:.4f}")
         wandb_run.log({
             "step": step,
