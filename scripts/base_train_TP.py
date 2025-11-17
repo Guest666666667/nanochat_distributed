@@ -196,13 +196,7 @@ param_groups = [
 ]
 
 print(f"Initialize deepspeed in rank: {ddp_rank}")
-print(f"[Rank {ddp_rank}] Before initialize - RANK={os.environ.get('RANK')}, WORLD_SIZE={os.environ.get('WORLD_SIZE')}")
-print(f"[Rank {ddp_rank}] Config: {deepspeed_config}")
-print(f"[Rank {ddp_rank}] Model type: {type(model)}")
-
-deepspeed_config_no_tp = deepspeed_config.copy()
-deepspeed_config_no_tp.pop('tensor_parallel', None)
-
+print(f"param_groups{param_groups}")
 model_engine, optimizer, _, _ = deepspeed.initialize(
     model=model,
     model_parameters=param_groups,
