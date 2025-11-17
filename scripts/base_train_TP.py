@@ -72,7 +72,7 @@ final_lr_frac = 0.0  # final LR is this fraction of the initial LR
 # Evaluation
 eval_every = 250  # every how many steps to evaluate the model for val bpb
 eval_tokens = 20 * 524288  # number of tokens to evaluate val loss on
-core_metric_every = 2000  # every how many steps to evaluate the core metric (-1 = disable)
+core_metric_every = -1  # every how many steps to evaluate the core metric (-1 = disable)
 core_metric_max_per_task = 500  # examples per task in estimating the core metric
 sample_every = 2000  # every how many steps to sample from the model
 # Output
@@ -263,18 +263,15 @@ for step in range(num_iterations + 1):
     if core_metric_every > 0 and (last_step or (step > 0 and step % core_metric_every == 0)):
         model_engine.eval()
         orig_model = model_engine.module
-        print0("00000000000000000000")
-        if tp_rank == 0:
-            with autocast_ctx:
-                results = evaluate_model(orig_model, tokenizer, device, max_per_task=core_metric_max_per_task)
-                print0("11111111111111111111111")
-                print0(f"Step {step:05d} | CORE metric: {results['core_metric']:.4f}")
-                wandb_run.log({
-                    "step": step,
-                    "total_training_flops": flops_so_far,
-                    "core_metric": results["core_metric"],
-                    "centered_results": results["centered_results"],
-                })
+        with autocast_ctx:
+            results = evaluate_model(orig_model, tokenizer, device, max_per_task=core_metric_max_per_task)
+        print0(f"Step {step:05d} | CORE metric: {results['core_metric']:.4f}")
+        wandb_run.log({
+            "step": step,
+            "total_training_flops": flops_so_far,
+            "core_metric": results["core_metric"],
+            "centered_results": results["centered_results"],
+        })
         model_engine.train()
 
     # once in a while: sample from the model (only on master process)
