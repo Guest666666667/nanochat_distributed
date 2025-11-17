@@ -195,11 +195,13 @@ param_groups = [
     }
 ]
 
+print(f"Initialize deepspeed in rank: {ddp_rank}")
 model_engine, optimizer, _, _ = deepspeed.initialize(
     model=model,
     model_parameters=param_groups,
     config=deepspeed_config
 )
+print(f"Initialized! {ddp_rank}")
 
 # Initialize the DataLoaders for train/val
 base_dir = get_base_dir()
