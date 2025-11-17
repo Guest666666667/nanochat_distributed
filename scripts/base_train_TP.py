@@ -86,7 +86,7 @@ user_config = {k: globals()[k] for k in config_keys}  # will be useful for loggi
 # Compute init
 device_type = autodetect_device_type() if device_type == "" else device_type
 ddp, ddp_rank, ddp_local_rank, ddp_world_size, device = compute_init(device_type)
-tp_size = 2
+tp_size = 1
 dp_size = ddp_world_size // tp_size
 tp_rank = ddp_rank % tp_size
 dp_rank = ddp_rank // tp_size
@@ -147,7 +147,6 @@ set_num_kv_heads(model_config.n_kv_head)
 set_n_embd(model_config.n_embd)
 set_num_attention_heads(model_config.n_head)
 set_tp_grain_size(128)
-print(f"rank:{ddp_rank},tp_group:{tp_group}")
 model = GPT(model_config, tp_group)
 orig_model = model  # original, uncompiled model, for saving raw model state_dict
 
