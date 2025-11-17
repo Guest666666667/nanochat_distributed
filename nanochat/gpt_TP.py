@@ -72,7 +72,7 @@ class CausalSelfAttention(nn.Module):
         B, T, C = x.size()
 
         # Project the input to get queries, keys, and values
-        local_n_head = self.n_head // self.tp_size
+        local_n_head = self.n_head // torch.distributed.get_world_size(group=self.mp_group)
         q = self.c_q(x).view(B, T, local_n_head, self.head_dim)
         k = self.c_k(x).view(B, T, local_n_head, self.head_dim)
         v = self.c_v(x).view(B, T, local_n_head, self.head_dim)
