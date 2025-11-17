@@ -176,11 +176,16 @@ injection_policy = {
         "mlp.c_proj"     # row-parallel, needs all-reduce
     ]
 }
+model = deepspeed.tp_model_init(
+    model=model,
+    tp_size=tp_size,
+    dtype=torch.bfloat16,
+    injection_policy=injection_policy
+)
 model_engine, optimizer, _, _ = deepspeed.initialize(
     model=model,
     model_parameters=param_groups,
-    config=deepspeed_config,
-    injection_policy=injection_policy
+    config=deepspeed_config
 )
 
 # Initialize the DataLoaders for train/val
