@@ -257,45 +257,45 @@ for step in range(num_iterations + 1):
         })
         model_engine.train()
 
-    # once in a while: estimate the CORE metric (all ranks participate)
-    # use the original uncompiled model because the inputs keep changing shape
-    results = {}
-    if core_metric_every > 0 and (last_step or (step > 0 and step % core_metric_every == 0)):
-        model_engine.eval()
-        orig_model = model_engine.module
-        with autocast_ctx:
-            results = evaluate_model(orig_model, tokenizer, device, max_per_task=core_metric_max_per_task)
-        print0(f"Step {step:05d} | CORE metric: {results['core_metric']:.4f}")
-        wandb_run.log({
-            "step": step,
-            "total_training_flops": flops_so_far,
-            "core_metric": results["core_metric"],
-            "centered_results": results["centered_results"],
-        })
-        model_engine.train()
-
-    # once in a while: sample from the model (only on master process)
-    # use the original uncompiled model because the inputs keep changing shape
-    if master_process and (last_step or (step > 0 and step % sample_every == 0)):
-        model_engine.eval()
-        prompts = [
-            "The capital of France is",
-            "The chemical symbol of gold is",
-            "If yesterday was Friday, then tomorrow will be",
-            "The opposite of hot is",
-            "The planets of the solar system are:",
-            "My favorite color is",
-            "If 5*x + 3 = 13, then x is",
-        ]
-        orig_model = model_engine.module
-        engine = Engine(orig_model, tokenizer)  # use orig_model to avoid recompilation
-        for prompt in prompts:
-            tokens = tokenizer(prompt, prepend="<|bos|>")
-            with autocast_ctx:
-                sample, _ = engine.generate_batch(tokens, num_samples=1, max_tokens=16, temperature=0)
-            print0(tokenizer.decode(sample[0]))
-        print0("Model eval done!")
-        model_engine.train()
+    # # once in a while: estimate the CORE metric (all ranks participate)
+    # # use the original uncompiled model because the inputs keep changing shape
+    # results = {}
+    # if core_metric_every > 0 and (last_step or (step > 0 and step % core_metric_every == 0)):
+    #     model_engine.eval()
+    #     orig_model = model_engine.module
+    #     with autocast_ctx:
+    #         results = evaluate_model(orig_model, tokenizer, device, max_per_task=core_metric_max_per_task)
+    #     print0(f"Step {step:05d} | CORE metric: {results['core_metric']:.4f}")
+    #     wandb_run.log({
+    #         "step": step,
+    #         "total_training_flops": flops_so_far,
+    #         "core_metric": results["core_metric"],
+    #         "centered_results": results["centered_results"],
+    #     })
+    #     model_engine.train()
+    #
+    # # once in a while: sample from the model (only on master process)
+    # # use the original uncompiled model because the inputs keep changing shape
+    # if master_process and (last_step or (step > 0 and step % sample_every == 0)):
+    #     model_engine.eval()
+    #     prompts = [
+    #         "The capital of France is",
+    #         "The chemical symbol of gold is",
+    #         "If yesterday was Friday, then tomorrow will be",
+    #         "The opposite of hot is",
+    #         "The planets of the solar system are:",
+    #         "My favorite color is",
+    #         "If 5*x + 3 = 13, then x is",
+    #     ]
+    #     orig_model = model_engine.module
+    #     engine = Engine(orig_model, tokenizer)  # use orig_model to avoid recompilation
+    #     for prompt in prompts:
+    #         tokens = tokenizer(prompt, prepend="<|bos|>")
+    #         with autocast_ctx:
+    #             sample, _ = engine.generate_batch(tokens, num_samples=1, max_tokens=16, temperature=0)
+    #         print0(tokenizer.decode(sample[0]))
+    #     print0("Model eval done!")
+    #     model_engine.train()
 
     # save checkpoint at the end of the run (only on master process)
     if last_step:
