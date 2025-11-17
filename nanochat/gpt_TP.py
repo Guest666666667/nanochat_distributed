@@ -63,10 +63,10 @@ class CausalSelfAttention(nn.Module):
         c_k_linear = nn.Linear(self.n_embd, self.n_kv_head * self.head_dim, bias=False)
         c_v_linear = nn.Linear(self.n_embd, self.n_kv_head * self.head_dim, bias=False)
         c_proj_linear = nn.Linear(self.n_embd, self.n_embd, bias=False)
-        self.c_q = LinearLayer(c_q_linear, mp_group=mp_group)
-        self.c_k = LinearLayer(c_k_linear, mp_group=mp_group)
-        self.c_v = LinearLayer(c_v_linear, mp_group=mp_group)
-        self.c_proj = LinearAllreduce(c_proj_linear, mp_group=mp_group)
+        self.c_q = LinearLayer(c_q_linear, mp_group=mp_group, name='c_q')
+        self.c_k = LinearLayer(c_k_linear, mp_group=mp_group, name='c_k')
+        self.c_v = LinearLayer(c_v_linear, mp_group=mp_group, name='c_v')
+        self.c_proj = LinearAllreduce(c_proj_linear, mp_group=mp_group, name='c_proj')
 
     def forward(self, x, cos_sin, kv_cache):
         B, T, C = x.size()
@@ -120,8 +120,8 @@ class MLP(nn.Module):
         super().__init__()
         c_fc_linear = nn.Linear(config.n_embd, 4 * config.n_embd, bias=False)
         c_proj_linear = nn.Linear(4 * config.n_embd, config.n_embd, bias=False)
-        self.c_fc = LinearLayer(c_fc_linear, mp_group=mp_group)
-        self.c_proj = LinearAllreduce(c_proj_linear, mp_group=mp_group)
+        self.c_fc = LinearLayer(c_fc_linear, mp_group=mp_group, name='c_fc')
+        self.c_proj = LinearAllreduce(c_proj_linear, mp_group=mp_group, name='c_proj')
 
 
 def forward(self, x):
