@@ -147,6 +147,7 @@ set_num_kv_heads(model_config.n_kv_head)
 set_n_embd(model_config.n_embd)
 set_num_attention_heads(model_config.n_head)
 set_tp_grain_size(128)
+print(f"rank:{ddp_rank},tp_group:{tp_group}")
 model = GPT(model_config, tp_group)
 orig_model = model  # original, uncompiled model, for saving raw model state_dict
 
