@@ -149,7 +149,6 @@ set_n_embd(model_config.n_embd)
 set_num_attention_heads(model_config.n_head)
 set_tp_grain_size(128)
 model = GPT(model_config, tp_group)
-orig_model = model  # original, uncompiled model, for saving raw model state_dict
 
 # num_params = sum(p.ds_numel for p in model.parameters())
 # For both ZeRO-2 and ZeRO-3
@@ -265,9 +264,10 @@ for step in range(num_iterations + 1):
         model_engine.eval()
         orig_model = model_engine.module
         print0("00000000000000000000")
-        with autocast_ctx:
-            results = evaluate_model(orig_model, tokenizer, device, max_per_task=core_metric_max_per_task)
-            print0("11111111111111111111111")
+        if tp_rank == 0:
+            with autocast_ctx:
+                results = evaluate_model(orig_model, tokenizer, device, max_per_task=core_metric_max_per_task)
+                print0("11111111111111111111111")
         print0(f"Step {step:05d} | CORE metric: {results['core_metric']:.4f}")
         wandb_run.log({
             "step": step,
