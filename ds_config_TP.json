@@ -11,9 +11,6 @@
   "bf16": {
     "enabled": true
   },
-  "tensor_parallel": {
-    "autotp_size": 2
-  },
   "zero_optimization": {
     "stage": 0,
     "overlap_comm": false,

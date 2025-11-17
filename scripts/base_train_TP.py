@@ -196,7 +196,6 @@ param_groups = [
 ]
 
 print(f"Initialize deepspeed in rank: {ddp_rank}")
-print(f"param_groups{param_groups}")
 model_engine, optimizer, _, _ = deepspeed.initialize(
     model=model,
     model_parameters=param_groups,
