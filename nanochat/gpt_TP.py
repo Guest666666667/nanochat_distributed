@@ -124,7 +124,7 @@ class MLP(nn.Module):
         self.c_proj = LinearAllreduce(c_proj_linear, mp_group=mp_group, name='c_proj')
 
 
-def forward(self, x):
+    def forward(self, x):
         x = self.c_fc(x)
         x = F.relu(x).square()
         x = self.c_proj(x)
