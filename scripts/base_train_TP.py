@@ -36,6 +36,12 @@ from nanochat.tokenizer import get_tokenizer, get_token_bytes
 from nanochat.loss_eval import evaluate_bpb
 from nanochat.engine import Engine
 from scripts.base_eval import evaluate_model
+from deepspeed.module_inject.tp_shard import (
+    set_num_kv_heads,
+    set_n_embd,
+    set_num_attention_heads,
+    set_tp_grain_size
+)
 
 print_banner()
 
@@ -137,6 +143,10 @@ model_config_kwargs = dict(sequence_len=max_seq_len, vocab_size=vocab_size, n_la
 #     model = GPT(model_config)
 # For ZeRO-2/1/0
 model_config = GPTConfig(**model_config_kwargs)
+set_num_kv_heads(model_config.n_kv_head)
+set_n_embd(model_config.n_embd)
+set_num_attention_heads(model_config.n_head)
+set_tp_grain_size(128)
 model = GPT(model_config, tp_group)
 orig_model = model  # original, uncompiled model, for saving raw model state_dict
 
