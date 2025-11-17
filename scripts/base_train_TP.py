@@ -301,10 +301,11 @@ for step in range(num_iterations + 1):
     # save checkpoint at the end of the run (only on master process)
     if last_step:
         # in deepspeed, every rank should save the checkpoint
+        print0("last step!!!")
         output_dirname = model_tag if model_tag else f"d{depth}"  # e.g. d12
         checkpoint_dir = os.path.join(base_dir, "base_checkpoints", output_dirname)
         model_engine.save_checkpoint(checkpoint_dir, tag=f"step_{step}")
-
+        print0(f"last step!!!save_checkpoint done! master_process: f{master_process}")
         if master_process:
             meta_path = os.path.join(checkpoint_dir, f"meta_{step:06d}.json")
             with open(meta_path, 'w') as f:
@@ -316,6 +317,7 @@ for step in range(num_iterations + 1):
                     "device_batch_size": device_batch_size,
                     "max_seq_len": max_seq_len,
                 }, f, indent=2)
+        print0("last step!!!all done")
 
     if last_step:
         break
