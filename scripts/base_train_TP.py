@@ -268,13 +268,13 @@ for step in range(num_iterations + 1):
             with autocast_ctx:
                 results = evaluate_model(orig_model, tokenizer, device, max_per_task=core_metric_max_per_task)
                 print0("11111111111111111111111")
-        print0(f"Step {step:05d} | CORE metric: {results['core_metric']:.4f}")
-        wandb_run.log({
-            "step": step,
-            "total_training_flops": flops_so_far,
-            "core_metric": results["core_metric"],
-            "centered_results": results["centered_results"],
-        })
+                print0(f"Step {step:05d} | CORE metric: {results['core_metric']:.4f}")
+                wandb_run.log({
+                    "step": step,
+                    "total_training_flops": flops_so_far,
+                    "core_metric": results["core_metric"],
+                    "centered_results": results["centered_results"],
+                })
         model_engine.train()
 
     # once in a while: sample from the model (only on master process)
