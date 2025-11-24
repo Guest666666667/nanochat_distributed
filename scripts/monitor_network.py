@@ -24,7 +24,7 @@ class NetworkMonitor:
         self.dynamic_length = dynamic_length
         self.dynamic_interval = dynamic_interval / 1000
 
-        self.consist_data_file = "logs/consist_samples.csv"
+        self.consist_data_file = "logs/consist_samples_tp1.csv"
         self.dynamic_data_file = "logs/dynamic_samples.csv"
         self.periods_results_file = "logs/periods_results.csv"
 
