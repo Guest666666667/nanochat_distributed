@@ -26,7 +26,9 @@ import json
 import wandb
 import torch
 import deepspeed
+import multiprocessing
 
+from monitor_network import NetworkMonitor
 from nanochat.gpt_TP import GPT, GPTConfig, Block
 from nanochat.dataloader_TP import tokenizing_distributed_data_loader
 from nanochat.common_deepspeed import compute_init, compute_cleanup, print0, DummyWandb, print_banner, get_base_dir, \
@@ -99,6 +101,20 @@ dp_group = dp_groups[tp_rank]
 print(f"ddp_rank:{ddp_rank}, ddp_local_rank: {ddp_local_rank}, ddp_world_size: {ddp_world_size}, "
       f"TP rank: {tp_rank}/{tp_size}, DP rank: {dp_rank}/{dp_size}")
 master_process = ddp_rank == 0  # this process will do logging, checkpointing etc.
+if master_process:
+    print("Starting Monitoring!")
+    req_queue = multiprocessing.Queue()
+    res_queue = multiprocessing.Queue()
+    monitor = NetworkMonitor(
+        interface="enp5s0f0np0",
+        sample_interval=1,
+        enable_file_logging=True,
+        dynamic_mode=False,
+        request_queue=req_queue,
+        response_queue=res_queue
+    )
+    monitor_process = multiprocessing.Process(target=monitor.run)
+    monitor_process.start()
 autocast_ctx = torch.amp.autocast(device_type=device_type,
                                   dtype=torch.bfloat16) if device_type == "cuda" else nullcontext()
 synchronize = torch.cuda.synchronize if device_type == "cuda" else lambda: None
@@ -422,3 +438,7 @@ get_report().log(section="Base model training", data=[
 # cleanup
 wandb_run.finish()  # wandb run finish
 compute_cleanup(model_engine)
+
+
+if master_process:
+    monitor_process.terminate()
