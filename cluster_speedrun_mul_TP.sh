@@ -66,9 +66,9 @@ deepspeed  --num_nodes $NUM_NODES \
     --launcher SLURM \
     scripts/base_train_TP.py \
     --deepspeed_config=ds_config_TP.json \
-    --depth=1 \
-    --device_batch_size=1 \
-    --num_iterations=3 \
+    --depth=12 \
+    --device_batch_size=2 \
+    --num_iterations=300 \
     --run=$WANDB_RUN
 
 
