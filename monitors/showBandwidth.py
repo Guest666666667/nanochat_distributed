@@ -10,24 +10,28 @@ def load_and_plot(file_path, label):
     plt.plot(df_filtered['time_s'], df_filtered['tx_mbps'] + df_filtered['rx_mbps'], label=label, alpha=0.7)
 
 
-# file1 = "../logs/consist_samples_dp1.csv"
-# file2 = "../logs/consist_samples_dp2.csv"
-file3 = "../logs/consist_samples_tp1.csv"
-file4 = "../logs/consist_samples_tp2.csv"
+file1 = "../logs/consist_samples_dp1.csv"
+file2 = "../logs/consist_samples_dp2.csv"
+file3 = "../logs/consist_samples_dp3.csv"
+# file1 = "../logs/consist_samples_tp1.csv"
+# file2 = "../logs/consist_samples_tp2.csv"
+# file3 = "../logs/consist_samples_tp3.csv"
 
-# start_time_s = 20
-# end_time_s = 70
-start_time_s = 150
-end_time_s = 200
-
+start_time_s =50
+end_time_s = 65;
+# start_time_s = 110
+# end_time_s = 112
+#
 plt.figure(figsize=(10, 5))
-# load_and_plot(file1, "dp1")
-# load_and_plot(file2, "dp2")
-load_and_plot(file3, "tp1")
-load_and_plot(file4, "tp2")
+load_and_plot(file1, "Dp1_1ns")
+load_and_plot(file2, "Dp2_5ns")
+load_and_plot(file3, "Dp3_20ns")
+# load_and_plot(file1, "tp1")
+# load_and_plot(file2, "tp2")
+# load_and_plot(file3, "tp3")
 
 plt.xlabel("Time (s)")
 plt.ylabel("Bandwidth (Mbps)")
 plt.legend(loc="upper right")
-plt.title(f"Comparison of Multiple Datasets ({start_time_s:.2f}-{end_time_s:.2f} s)")
+plt.title(f"Comparison of Multiple Datasets (depth=12, batch_size=2, {start_time_s:.2f}-{end_time_s:.2f} s)")
 plt.show()

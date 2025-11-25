@@ -13,32 +13,25 @@ python -m scripts.base_train --depth=4 --max_seq_len=512 --device_batch_size=1 -
 
 import os
 os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
-import sys
-venv_path = '/home/user/Desktop/nanochat_distributed/.venv/lib/python3.10/site-packages'
-if os.path.exists(venv_path):
-    sys.path.insert(0, venv_path)
 import time
 from contextlib import nullcontext
 
-import json
 import wandb
 import torch
-import deepspeed
 import multiprocessing
 
 from monitor_network import NetworkMonitor
 from nanochat.gpt import GPT, GPTConfig
-from nanochat.dataloader import tokenizing_distributed_data_loader
-from nanochat.common_deepspeed import compute_init, compute_cleanup, print0, DummyWandb, print_banner, get_base_dir, autodetect_device_type
+from nanochat.dataloader import tokenizing_distributed_data_loader, tokenizing_distributed_data_loader_with_state
+from nanochat.common import compute_init, compute_cleanup, print0, DummyWandb, print_banner, get_base_dir, autodetect_device_type
 from nanochat.tokenizer import get_tokenizer, get_token_bytes
-# from nanochat.checkpoint_manager import save_checkpoint
+from nanochat.checkpoint_manager import save_checkpoint, load_checkpoint
 from nanochat.loss_eval import evaluate_bpb
 from nanochat.engine import Engine
 from scripts.base_eval import evaluate_model
 print_banner()
 
 # -----------------------------------------------------------------------------
-deepspeed_config = "ds_config_DP.json"
 # User settings
 run = "dummy" # wandb run name default ("dummy" is special - we won't log to wandb)
 # Runtime
@@ -61,12 +54,14 @@ grad_clip = 1.0 # gradient clipping value (0.0 = disabled)
 warmup_ratio = 0.0 # ratio of iterations for LR warmup
 warmdown_ratio = 0.2 # ratio of iterations for LR warmdown
 final_lr_frac = 0.0 # final LR is this fraction of the initial LR
+resume_from_step = -1 # resume training from this step of the optimization (-1 = disable)
 # Evaluation
 eval_every = 250 # every how many steps to evaluate the model for val bpb
 eval_tokens = 20*524288 # number of tokens to evaluate val loss on
 core_metric_every = 2000 # every how many steps to evaluate the core metric (-1 = disable)
 core_metric_max_per_task = 500 # examples per task in estimating the core metric
 sample_every = 2000 # every how many steps to sample from the model
+save_every = -1 # every how many steps to save model checkpoints (-1 = disable, and save only at the end of the run)
 # Output
 model_tag = "" # optionally override the model tag for the output checkpoint directory name
 # now allow CLI to override the settings via the configurator lol
@@ -78,7 +73,6 @@ user_config = {k: globals()[k] for k in config_keys} # will be useful for loggin
 # Compute init
 device_type = autodetect_device_type() if device_type == "" else device_type
 ddp, ddp_rank, ddp_local_rank, ddp_world_size, device = compute_init(device_type)
-print(f"ddp_rank:{ddp_rank}, ddp_local_rank: {ddp_local_rank}, ddp_world_size: {ddp_world_size}")
 master_process = ddp_rank == 0 # this process will do logging, checkpointing etc.
 if master_process:
     print("Starting Monitoring!")
@@ -127,30 +121,35 @@ grad_accum_steps = total_batch_size // world_tokens_per_fwdbwd
 print0(f"Tokens / micro-batch / rank: {device_batch_size} x {max_seq_len} = {tokens_per_fwdbwd:,}")
 print0(f"Tokens / micro-batch: {world_tokens_per_fwdbwd:,}")
 print0(f"Total batch size {total_batch_size:,} => gradient accumulation steps: {grad_accum_steps}")
+
 # -----------------------------------------------------------------------------
 # Initialize the Model
-model_config_kwargs = dict(sequence_len=max_seq_len, vocab_size=vocab_size, n_layer=num_layers, n_head=num_heads, n_kv_head=num_kv_heads, n_embd=model_dim)
-# For ZeRO-3 only
-# with deepspeed.zero.Init(config_dict_or_path=deepspeed_config):
-#     model_config = GPTConfig(**model_config_kwargs)
-#     model = GPT(model_config)
-# For ZeRO-2/1/0
-model_config = GPTConfig(**model_config_kwargs)
-model = GPT(model_config)
-orig_model = model # original, uncompiled model, for saving raw model state_dict
 
-# num_params = sum(p.ds_numel for p in model.parameters())
-# For both ZeRO-2 and ZeRO-3
-num_params = sum(
-    p.ds_numel if hasattr(p, 'ds_numel') else p.numel()
-    for p in model.parameters()
-)
+# Create a new model with random weights
+model_config_kwargs = dict(sequence_len=max_seq_len, vocab_size=vocab_size, n_layer=num_layers, n_head=num_heads, n_kv_head=num_kv_heads, n_embd=model_dim)
+with torch.device("meta"):
+    model_config = GPTConfig(**model_config_kwargs)
+    model = GPT(model_config)
+model.to_empty(device=device)
+model.init_weights()
+
+# If we are resuming, overwrite the model parameters with those of the checkpoint
+base_dir = get_base_dir()
+output_dirname = model_tag if model_tag else f"d{depth}" # e.g. d12
+checkpoint_dir = os.path.join(base_dir, "base_checkpoints", output_dirname)
+resuming = resume_from_step != -1
+if resuming:
+    print0(f"Resuming optimization from step {resume_from_step}")
+    model_data, optimizer_data, meta_data = load_checkpoint(checkpoint_dir, resume_from_step, device, load_optimizer=True, rank=ddp_rank)
+    model.load_state_dict(model_data, strict=True, assign=True)
+    del model_data # free up this memory after the copy
+
+orig_model = model # original, uncompiled model, for saving raw model state_dict and for inference/evaluation (because the shapes may change shape)
+model = torch.compile(model, dynamic=False) # the inputs to model will never change shape so dynamic=False is safe
+num_params = sum(p.numel() for p in model.parameters())
 print0(f"Number of parameters: {num_params:,}")
-with deepspeed.zero.GatheredParameters(list(model.parameters())):
-    # num_params = sum(p.numel() for p in model.parameters())
-    # print0(f"Number of parameters: {num_params:,}")
-    num_flops_per_token = model.estimate_flops()
-    print0(f"Estimated FLOPs per token: {num_flops_per_token:e}")
+num_flops_per_token = model.estimate_flops()
+print0(f"Estimated FLOPs per token: {num_flops_per_token:e}")
 
 # Calculate number of iterations. Either it is given, or from target flops, or from target data:param ratio (in that order)
 assert num_iterations > 0 or target_param_data_ratio > 0 or target_flops > 0
@@ -174,27 +173,21 @@ print0(f"Total training FLOPs estimate: {num_flops_per_token * total_tokens:e}")
 
 # -----------------------------------------------------------------------------
 # Initialize the Optimizer (Muon for Linear layers, AdamW for embedding and lm_head)
-# optimizers = model.setup_optimizers(unembedding_lr=unembedding_lr, embedding_lr=embedding_lr, matrix_lr=matrix_lr, weight_decay=weight_decay)
-# adamw_optimizer, muon_optimizer = optimizers
-param_groups = [
-    {
-        "params": [p for p in model.parameters()],
-        "lr": matrix_lr,
-        "initial_lr": matrix_lr,
-    }
-]
-model_engine, optimizer, _, _ = deepspeed.initialize(
-    model=model,
-    model_parameters=param_groups,
-    config=deepspeed_config
-)
+optimizers = model.setup_optimizers(unembedding_lr=unembedding_lr, embedding_lr=embedding_lr, matrix_lr=matrix_lr, weight_decay=weight_decay)
+adamw_optimizer, muon_optimizer = optimizers
 
+if resuming:
+    for opt, dat in zip(optimizers, optimizer_data):
+        opt.load_state_dict(dat)
+    del optimizer_data # free up the memory
+
+# -----------------------------------------------------------------------------
 # Initialize the DataLoaders for train/val
-base_dir = get_base_dir()
 tokens_dir = os.path.join(base_dir, "tokenized_data")
-train_loader = tokenizing_distributed_data_loader(device_batch_size, max_seq_len, split="train", device=device)
+dataloader_resume_state_dict = None if not resuming else meta_data["dataloader_state_dict"]
+train_loader = tokenizing_distributed_data_loader_with_state(device_batch_size, max_seq_len, split="train", device=device, resume_state_dict=dataloader_resume_state_dict)
 build_val_loader = lambda: tokenizing_distributed_data_loader(device_batch_size, max_seq_len, split="val", device=device)
-x, y = next(train_loader) # kick off load of the very first batch of data
+x, y, dataloader_state_dict = next(train_loader) # kick off load of the very first batch of data
 
 # -----------------------------------------------------------------------------
 # Set up hyperparameter schedulers
@@ -211,24 +204,40 @@ def get_lr_multiplier(it):
         progress = (num_iterations - it) / warmdown_iters
         return progress * 1.0 + (1 - progress) * final_lr_frac
 
+# Momentum scheduler for Muon optimizer
+def get_muon_momentum(it):
+    frac = min(it / 300, 1)
+    momentum = (1 - frac) * 0.85 + frac * 0.95
+    return momentum
+
+# -----------------------------------------------------------------------------
+# Loop state (variables updated by the training loop)
+
+if not resuming:
+    step = 0
+    min_val_bpb = float("inf")
+    smooth_train_loss = 0 # EMA of training loss
+    total_training_time = 0 # total wall-clock time of training
+else:
+    step = meta_data["step"]
+    loop_state = meta_data["loop_state"]
+    min_val_bpb = loop_state["min_val_bpb"]
+    smooth_train_loss = loop_state["smooth_train_loss"]
+    total_training_time = loop_state["total_training_time"]
+
 # -----------------------------------------------------------------------------
 # Training loop
-min_val_bpb = float("inf")
-smooth_train_loss = 0 # EMA of training loss
-ema_beta = 0.9 # EMA decay factor
-total_training_time = 0 # total wall-clock time of training
-# note that we run +1 steps only so that we can eval and save at the end
-for step in range(num_iterations + 1):
-    last_step = step == num_iterations
+while True:
+    last_step = step == num_iterations # loop runs num_iterations+1 times so that we can eval/save at the end
     flops_so_far = num_flops_per_token * total_batch_size * step
 
     # once in a while: evaluate the val bpb (all ranks participate)
     if last_step or step % eval_every == 0:
-        model_engine.eval()
+        model.eval()
         val_loader = build_val_loader()
         eval_steps = eval_tokens // (device_batch_size * max_seq_len * ddp_world_size)
         with autocast_ctx:
-            val_bpb = evaluate_bpb(model_engine.module, val_loader, eval_steps, token_bytes)
+            val_bpb = evaluate_bpb(model, val_loader, eval_steps, token_bytes)
         print0(f"Step {step:05d} | Validation bpb: {val_bpb:.4f}")
         if val_bpb < min_val_bpb:
             min_val_bpb = val_bpb
@@ -238,14 +247,13 @@ for step in range(num_iterations + 1):
             "total_training_time": total_training_time,
             "val/bpb": val_bpb,
         })
-        model_engine.train()
+        model.train()
 
     # once in a while: estimate the CORE metric (all ranks participate)
     # use the original uncompiled model because the inputs keep changing shape
     results = {}
     if core_metric_every > 0 and (last_step or (step > 0 and step % core_metric_every == 0)):
-        model_engine.eval()
-        orig_model = model_engine.module
+        model.eval()
         with autocast_ctx:
             results = evaluate_model(orig_model, tokenizer, device, max_per_task=core_metric_max_per_task)
         print0(f"Step {step:05d} | CORE metric: {results['core_metric']:.4f}")
@@ -255,12 +263,12 @@ for step in range(num_iterations + 1):
             "core_metric": results["core_metric"],
             "centered_results": results["centered_results"],
         })
-        model_engine.train()
+        model.train()
 
     # once in a while: sample from the model (only on master process)
     # use the original uncompiled model because the inputs keep changing shape
     if master_process and (last_step or (step > 0 and step % sample_every == 0)):
-        model_engine.eval()
+        model.eval()
         prompts = [
             "The capital of France is",
             "The chemical symbol of gold is",
@@ -270,35 +278,39 @@ for step in range(num_iterations + 1):
             "My favorite color is",
             "If 5*x + 3 = 13, then x is",
         ]
-        orig_model = model_engine.module
         engine = Engine(orig_model, tokenizer) # use orig_model to avoid recompilation
         for prompt in prompts:
             tokens = tokenizer(prompt, prepend="<|bos|>")
             with autocast_ctx:
                 sample, _ = engine.generate_batch(tokens, num_samples=1, max_tokens=16, temperature=0)
             print0(tokenizer.decode(sample[0]))
-        print0("Model eval done!")
-        model_engine.train()
+        model.train()
 
-    # save checkpoint at the end of the run (only on master process)
-    if last_step:
-        # in deepspeed, every rank should save the checkpoint
-        output_dirname = model_tag if model_tag else f"d{depth}" # e.g. d12
-        checkpoint_dir = os.path.join(base_dir, "base_checkpoints", output_dirname)
-        model_engine.save_checkpoint(checkpoint_dir, tag=f"step_{step}")
+    # save checkpoint: at the end of the run, or every save_every steps, except at the first step or the resume step
+    if last_step or (step > 0 and step != resume_from_step and save_every > 0 and step % save_every == 0):
+        save_checkpoint(
+            checkpoint_dir,
+            step,
+            orig_model.state_dict(), # model parameters
+            [opt.state_dict() for opt in optimizers], # optimizer states
+            { # metadata saved as json
+                "step": step,
+                "val_bpb": val_bpb, # loss at last step
+                "model_config": model_config_kwargs,
+                "user_config": user_config, # inputs to the training script
+                "device_batch_size": device_batch_size,
+                "max_seq_len": max_seq_len,
+                "dataloader_state_dict": dataloader_state_dict,
+                "loop_state": { # all loop state (other than step) so that we can resume training
+                    "min_val_bpb": min_val_bpb,
+                    "smooth_train_loss": smooth_train_loss,
+                    "total_training_time": total_training_time,
+                },
+            },
+            rank=ddp_rank,
+        )
 
-        if master_process:
-            meta_path = os.path.join(checkpoint_dir, f"meta_{step:06d}.json")
-            with open(meta_path, 'w') as f:
-                json.dump({
-                    "step": step,
-                    "val_bpb": val_bpb,
-                    "model_config": model_config_kwargs,
-                    "user_config": user_config,
-                    "device_batch_size": device_batch_size,
-                    "max_seq_len": max_seq_len,
-                }, f, indent=2)
-
+    # termination conditions (TODO: possibly also add loss explosions etc.)
     if last_step:
         break
 
@@ -307,38 +319,36 @@ for step in range(num_iterations + 1):
     # evaluate the gradient
     synchronize()
     t0 = time.time()
-
-    model_engine.optimizer.zero_grad()
     for micro_step in range(grad_accum_steps):
-        loss = model_engine(x, y)
+        with autocast_ctx:
+            loss = model(x, y)
         train_loss = loss.detach() # for logging
-        model_engine.backward(loss)
-
-        # param_before = next(model_engine.parameters()).clone()
-        # grad_before = model_engine.get_global_grad_norm()
-        model_engine.step()
-        # print0(f"After step - DeepSpeed micro_steps: {model_engine.micro_steps}")
-        # param_after = next(model_engine.parameters())
-        # grad_after = model_engine.get_global_grad_norm()
-        # param_diff = (param_after - param_before).abs().max()
-        # print0(f"Max parameter change: {param_diff:.6e}")
-        # print0(f"Grad norm: {grad_before},{grad_after}")
-
-        if micro_step < grad_accum_steps - 1:
-            x, y = next(train_loader)
-
+        loss = loss / grad_accum_steps # each .backward() is a grad sum => normalize loss here
+        loss.backward()
+        x, y, dataloader_state_dict = next(train_loader) # prefetch the next batch while the GPU is busy with forward/backward
+    # gradient clipping
+    grad_clip_enabled = grad_clip > 0.0
+    if grad_clip_enabled:
+        grad_norm_tensor = torch.nn.utils.clip_grad_norm_(orig_model.parameters(), grad_clip)
+        grad_norm = grad_norm_tensor.item() # GPU tensor -> CPU float (note: cpu-gpu sync point)
     # step the optimizers
     lrm = get_lr_multiplier(step)
-    for param_group in optimizer.param_groups:
-        param_group["lr"] = param_group["initial_lr"] * lrm
-    print0(f"Learning rate: {optimizer.param_groups[0]['lr']:.6f}")
-
+    for opt in optimizers:
+        for group in opt.param_groups:
+            group["lr"] = group["initial_lr"] * lrm
+    muon_momentum = get_muon_momentum(step)
+    for group in muon_optimizer.param_groups:
+        group["momentum"] = muon_momentum
+    for opt in optimizers:
+        opt.step()
+    model.zero_grad(set_to_none=True)
     synchronize()
     t1 = time.time()
     dt = t1 - t0
     # -------------------------------------------------------------------------
 
     # logging
+    ema_beta = 0.9 # EMA decay factor for some smoothing just for nicer logging
     smooth_train_loss = ema_beta * smooth_train_loss + (1 - ema_beta) * train_loss.item() # EMA the training loss
     debiased_smooth_loss = smooth_train_loss / (1 - ema_beta**(step + 1)) # debias the EMA
     pct_done = 100 * step / num_iterations
@@ -348,11 +358,7 @@ for step in range(num_iterations + 1):
     mfu = 100 * flops_per_sec / promised_flops_per_sec_h100 # in %
     if step > 10:
         total_training_time += dt # only count the time after the first 10 steps
-    grad_norm = model_engine.get_global_grad_norm()
-    if grad_norm is not None:
-        print_grad_norm = f" grad norm: {grad_norm:.4f} |"
-    else:
-        print_grad_norm = " grad norm: N/A |"
+    print_grad_norm = f" grad norm: {grad_norm:.4f} |" if grad_clip_enabled else ""
     print0(f"step {step:05d}/{num_iterations:05d} ({pct_done:.2f}%) | loss: {debiased_smooth_loss:.6f} |{print_grad_norm} lrm: {lrm:.2f} | dt: {dt * 1000:.2f}ms | tok/sec: {tok_per_sec:,} | mfu: {mfu:.2f} | total time: {total_training_time/60:.2f}m")
     if step % 100 == 0:
         log_data = {
@@ -364,9 +370,13 @@ for step in range(num_iterations + 1):
             "train/dt": dt,
             "train/tok_per_sec": tok_per_sec,
             "train/mfu": mfu,
-            "train/grad_norm": grad_norm,
         }
+        if grad_clip_enabled:
+            log_data["train/grad_norm"] = grad_norm
         wandb_run.log(log_data)
+
+    # state update
+    step += 1
 
 # print a few more stats
 print0(f"Peak memory usage: {get_max_memory() / 1024 / 1024:.2f}MiB")
@@ -401,7 +411,7 @@ get_report().log(section="Base model training", data=[
 
 # cleanup
 wandb_run.finish() # wandb run finish
-compute_cleanup(model_engine)
+compute_cleanup()
 
 
 if master_process:
