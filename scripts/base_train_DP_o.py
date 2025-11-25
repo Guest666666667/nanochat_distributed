@@ -20,7 +20,7 @@ import wandb
 import torch
 import multiprocessing
 
-from monitor_network import NetworkMonitor
+from scripts.monitor_network import NetworkMonitor
 from nanochat.gpt import GPT, GPTConfig
 from nanochat.dataloader import tokenizing_distributed_data_loader, tokenizing_distributed_data_loader_with_state
 from nanochat.common import compute_init, compute_cleanup, print0, DummyWandb, print_banner, get_base_dir, autodetect_device_type

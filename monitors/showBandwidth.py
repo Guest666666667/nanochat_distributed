@@ -10,12 +10,12 @@ def load_and_plot(file_path, label):
     plt.plot(df_filtered['time_s'], df_filtered['tx_mbps'] + df_filtered['rx_mbps'], label=label, alpha=0.7)
 
 
-file1 = "../logs/consist_samples_dp1.csv"
-file2 = "../logs/consist_samples_dp2.csv"
-file3 = "../logs/consist_samples_dp3.csv"
-# file1 = "../logs/consist_samples_tp1.csv"
-# file2 = "../logs/consist_samples_tp2.csv"
-# file3 = "../logs/consist_samples_tp3.csv"
+file1 = "../logs/consist_samples_dp_1ns.csv"
+file2 = "../logs/consist_samples_dp_5ns.csv"
+file3 = "../logs/consist_samples_dp_20ns.csv"
+# file1 = "../logs/consist_samples_tp_1ns.csv"
+# file2 = "../logs/consist_samples_tp_5ns.csv"
+# file3 = "../logs/consist_samples_tp_20ns.csv"
 
 start_time_s =50
 end_time_s = 65;
