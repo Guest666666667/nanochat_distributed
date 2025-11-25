@@ -107,7 +107,7 @@ if master_process:
     res_queue = multiprocessing.Queue()
     monitor = NetworkMonitor(
         interface="enp5s0f0np0",
-        sample_interval=5,
+        sample_interval=20,
         enable_file_logging=True,
         dynamic_mode=False,
         request_queue=req_queue,
